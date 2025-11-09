@@ -134,11 +134,11 @@ def insert_menu_from_csv(csv_path="menu.csv"):
     mydb.close()
 
 
-def insert_restaurant_from_csv(csv_path="restaurant.csv"):
+def insert_Restaurant_from_csv(csv_path="raw_data/restaurant.csv"):
     with open(csv_path, mode="r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
         for row in reader:
-            id = int(row["menu_id"]) if row.get("menu_id") else None
+            id = int(row["id"]) if row.get("id") else None
             name = row.get("name")
             city = row.get("city")
             rating = row.get("rating")
@@ -148,15 +148,16 @@ def insert_restaurant_from_csv(csv_path="restaurant.csv"):
             lic_no = row.get("lic_no")
             link = row.get("link")
             address = row.get("address")
+            menu = row.get("menu")
             sql = """
                 INSERT IGNORE INTO Restaurant (
                     id, name, city, rating, rating_count, 
-                    cost, cuisine, lic_no, link, address, menu_file
+                    cost, cuisine, lic_no, link, address, menu
                 )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             val = (id, name, city, rating, rating_count, cost, cuisine, lic_no,
-                   link, address)
+                   link, address, menu)
             mycursor.execute(sql, val)
     mydb.commit()
     mycursor.close()
