@@ -7,6 +7,7 @@ from views.courier_view import courier
 from views.menu_view import menu
 from views.food_view import food
 from views.order_view import order
+from views.restaurant_view import restaurant
 import app_views
 # from views.user_view import user
 # from views.restaurant_view import restaurant
