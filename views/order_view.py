@@ -95,3 +95,51 @@ def get_order(order_id):
     finally:
         mycursor.close()
         db.close()
+
+@order.route("/<int:user_id>", methods=["GET"])
+def get_orders_by_user_id(user_id):
+    db = get_db_connection()
+    if not db:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    mycursor = db.cursor(dictionary=True)
+    try:
+        query = "SELECT * FROM order WHERE user_id = %s"
+        mycursor.execute(query, (user_id))
+        orders = mycursor.fetchall()
+        if orders:
+            return jsonify(orders)
+        else:
+            return jsonify([]), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": f"Database error: {err}"}), 500
+
+    finally:
+        mycursor.close()
+        db.close()
+
+@order.route("/<int:restaurant_id>", methods=["GET"])
+def get_orders_by_restaurant_id(restaurant_id):
+    db = get_db_connection()
+    if not db:
+        return jsonify({"error": "Database connection failed"}), 500
+
+    mycursor = db.cursor(dictionary=True)
+    try:
+        query = "SELECT * FROM order WHERE r_id = %s"
+        mycursor.execute(query, (restaurant_id))
+        orders = mycursor.fetchall()
+        if orders:
+            return jsonify(orders)
+        else:
+            return jsonify([]), 200
+
+    except mysql.connector.Error as err:
+        return jsonify({"error": f"Database error: {err}"}), 500
+
+    finally:
+        mycursor.close()
+        db.close()
+
+
