@@ -1,188 +1,300 @@
+import pandas as pd
 import mysql.connector
-import csv
+from mysql.connector import Error
+import numpy as np
+import os
+import time
 
-mydb = mysql.connector.connect(host="localhost",
-                               user="root",
-                               password="password",
-                               database="term_project")
-mycursor = mydb.cursor()
+# ---------------------------------------------------------
+# AYARLAR
+# ---------------------------------------------------------
+CSV_FOLDER_PATH = 'raw_data'
+BATCH_SIZE = 2000
 
+db_config = {
+    'host': 'localhost',
+    'user': 'root',
+    'password': '123654', # <-- ŞİFRENİ YAZ
+    'database': 'term_project',
+    'ssl_disabled': True,
+    'allow_local_infile': True
+}
 
-## This file aim to insert data from users our csv to database tables
-def insert_user():
-    with open("users.csv") as file_obj:
-        read_csv = csv.reader(file_obj)
-        i = 0
-        for row in read_csv:
-            if i == 1:
-                id, name, email, password, age, gender, marital_status, occupation, monthly_income = int(
-                    row[1]), row[2], row[3], row[4], int(
-                        row[5]), row[6], row[7], row[8], row[9]
-                address, city = "", ""
-                query = (
-                    "INSERT INTO `user` "
-                    "(user_id, user_name, email, password, age, gender, martial_status, occuption, monthly_income, city, address) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
-                values = (id, name, email, password, age, gender,
-                          marital_status, occupation, monthly_income, city,
-                          address)
-                          
-                mycursor.execute(query, values)
-            i = 1
-        mydb.commit()
+# Hafızada tutulacak Menü Haritası {r_id: (m_id, price)}
+MENU_MAP = {}
 
+# ---------------------------------------------------------
+# BAĞLANTI VE YARDIMCI FONKSİYONLAR
+# ---------------------------------------------------------
+def create_connection():
+    try:
+        conn = mysql.connector.connect(**db_config)
+        return conn
+    except Error as e:
+        print(f"Veritabanı bağlantı hatası: {e}")
+        return None
 
-##This function insert couriers data in the database from couriers.csv
-def insert_couriers():
-    with open("couriers.csv", mode='r') as file_obj:
-        read_csv = csv.reader(file_obj)
-
-        i = 0
-        for row in read_csv:
-            if i == 1:
-
-                r_id = int(row[0]) if row[0] else None
-
-                name = row[1]
-                surname = row[2]
-                email = row[3]
-                password = row[4]
-                age = int(row[5])
-                gender = row[6]
-                marital_status = row[7]
-                experience = int(row[8])
-                rating = float(row[9])
-                rating_count = int(row[10])
-                task_count = int(row[11])
-
-                query = (
-                    "INSERT INTO `Courier` "
-                    "(`r_id`, `name`, `surname`, `email`, `password`, `Age`, `Gender`, "
-                    "`MaritalStatus`, `experience`, `rating`, `ratingCount`, `taskCount`) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)")
-
-                # values to be inserted to the db
-                values = (r_id, name, surname, email, password, age, gender,
-                          marital_status, experience, rating, rating_count,
-                          task_count)
-                # use the query with the values
-                mycursor.execute(query, values)
-            # flag to skip the header line
-            i = 1
-    # apply all changes
-    mydb.commit()
-
-
-## This function insert orders in db fron orders.csv
-def insert_orders():
-    TABLE_NAME = "orders"
-    # --- CONNECT TO DATABASE -
-
-    # --- OPTIONAL: Create table if not exists ---
-    create_table_query = f"""
-    CREATE TABLE IF NOT EXISTS {TABLE_NAME} (
-        id INT PRIMARY KEY,
-        order_date DATE,
-        sales_qty INT,
-        sales_amount FLOAT,
-        currency VARCHAR(10),
-        user_id INT,
-        r_id FLOAT
-    );
-    """
-    mycursor.execute(create_table_query)
-    # --- READ AND INSERT DATA FROM CSV ---
-    with open('../raw_data/orders.csv', 'r', encoding='utf-8') as file:
-        reader = csv.DictReader(file)
-        for row in reader:
-            sql = f"""
-            INSERT INTO {TABLE_NAME}
-            (id, order_date, sales_qty, sales_amount, currency, user_id, r_id)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """
-            vals = (int(row['Unnamed: 0']), row['order_date'],
-                    int(row['sales_qty']), float(row['sales_amount']),
-                    row['currency'], int(row['user_id']),
-                    float(row['r_id']) if row['r_id'] else None)
-            mycursor.execute(sql, vals)
-
-    mydb.commit()
-    mycursor.close()
-    mydb.close()
-
-    print("✅ Data inserted successfully!")
-
-
-## This function is insert menu from menu.csv
-def insert_menu_from_csv(csv_path="raw_data/menu.csv"):
-    with open(csv_path, mode="r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            menu_id = row.get("menu_id")
-            r_id = int(row["r_id"]) if row.get("r_id") else None
-            f_id    = row.get("f_id")
-            cuisine = row.get("cuisine")
-            price = float(
-                row["price"]) if row.get("price") not in (None, "") else None
+def insert_data_in_batches(cursor, conn, query, data, table_name):
+    if not data:
+        print(f"--- {table_name}: Yüklenecek veri yok! ---")
+        return
+        
+    total_rows = len(data)
+    print(f"--- {table_name}: Toplam {total_rows} satır yükleniyor... ---")
+    
+    start_time = time.time()
+    
+    for i in range(0, total_rows, BATCH_SIZE):
+        batch = data[i:i + BATCH_SIZE]
+        try:
+            cursor.executemany(query, batch)
+            conn.commit()
+            percent = min(100, round(((i + BATCH_SIZE) / total_rows) * 100))
+            print(f"\rYükleniyor: %{percent} ({min(i + BATCH_SIZE, total_rows)} / {total_rows})", end='')
+        except Error as e:
+            print(f"\n HATA (Batch {i}): {e}")
+            continue
             
-            mycursor.execute("SELECT 1 FROM Food WHERE f_id=%s", (f_id,))
-            if not mycursor.fetchone():
-                print(f"[WARN] Skipping Menu row menu_id={menu_id}, f_id={f_id} (Food missing)")
-                continue
+    end_time = time.time()
+    print(f"\n{table_name} tamamlandı. Süre: {round(end_time - start_time, 2)} sn.\n")
 
-            mycursor.execute(
-                """
-                INSERT IGNORE INTO Menu (menu_id, r_id, f_id, cuisine, price)
-                VALUES (%s, %s, %s, %s, %s)
-            """, (menu_id, r_id, f_id, cuisine, price))
-    mydb.commit()
-    mycursor.close()
-    mydb.close()
+def get_csv_path(filename):
+    return os.path.join(CSV_FOLDER_PATH, filename)
 
+# ---------------------------------------------------------
+# TABLO YÜKLEME FONKSİYONLARI
+# ---------------------------------------------------------
 
-def insert_food_from_csv(csv_path="raw_data/food.csv"):
-    with open(csv_path, mode="r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            f_id = row.get("f_id")
-            item = row.get("item")
-            veg  = row.get("veg_or_non_veg")
-            if not f_id or not item:
-                continue
-            mycursor.execute(
-                """
-                INSERT IGNORE INTO Food (f_id, item, veg_or_non_veg)
-                VALUES (%s, %s, %s)
-                """,
-                (f_id, item, veg),
-            )
-    mydb.commit()
+def create_legacy_courier(cursor, conn):
+    print("--- Legacy Courier (ID 1) Oluşturuluyor ---")
+    # Bu kurye tüm eski CSV siparişlerini üstlenecek
+    # r_id NULL (Freelancer gibi düşünebiliriz veya herhangi birine bağlı)
+    query = """
+    INSERT IGNORE INTO Courier 
+    (c_id, r_id, name, surname, email, password, Age, Gender, Marital_Status, experience, rating, ratingCount, taskCount) 
+    VALUES 
+    (1, NULL, 'Legacy', 'System', 'legacy@sys.com', 'admin123', 99, 'Bot', 'Single', 10, 5.0, 99999, 99999)
+    """
+    try:
+        cursor.execute(query)
+        conn.commit()
+        print("Başarılı: Legacy Courier eklendi.")
+    except Error as e:
+        print(f"Legacy Courier hatası: {e}")
 
-def insert_Restaurant_from_csv(csv_path="restaurant.csv"):
-    with open(csv_path, mode="r", encoding="utf-8") as f:
-        reader = csv.DictReader(f)
-        for row in reader:
-            id = int(row["id"]) if row.get("id") else None
-            name = row.get("name")
-            city = row.get("city")
-            rating = row.get("rating")
-            rating_count = row.get("rating_count")
-            cost = row.get("cost")
-            cuisine = row.get("cuisine")
-            lic_no = row.get("lic_no")
-            link = row.get("link")
-            address = row.get("address")
-            menu = row.get("menu")
-            sql = """
-                INSERT IGNORE INTO Restaurant (
-                    id, name, city, rating, rating_count, 
-                    cost, cuisine, lic_no, link, address, menu
-                )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """
-            val = (id, name, city, rating, rating_count, cost, cuisine, lic_no,
-                   link, address, menu)
-            mycursor.execute(sql, val)
-    mydb.commit()
-    mycursor.close()
-    mydb.close()
+def import_food(cursor, conn):
+    file_path = get_csv_path('food.csv')
+    try:
+        df = pd.read_csv(file_path)
+        # NULL KONTROLÜ: Veg/Non-Veg boşsa 'Non-Veg' yap
+        df['veg_or_non_veg'] = df['veg_or_non_veg'].fillna('Non-Veg')
+        
+        data = df[['f_id', 'item', 'veg_or_non_veg']].values.tolist()
+        query = "INSERT IGNORE INTO Food (f_id, item, veg_or_non_veg) VALUES (%s, %s, %s)"
+        insert_data_in_batches(cursor, conn, query, data, "Food")
+    except Exception as e:
+        print(f"Food hata: {e}")
+
+def import_users(cursor, conn):
+    file_path = get_csv_path('users.csv')
+    try:
+        df = pd.read_csv(file_path)
+        df.rename(columns={
+            'Marital Status': 'Marital_Status', 
+            'Monthly Income': 'Monthly_Income',
+            'Educational Qualifications': 'Educational_Qualifications',
+            'Family size': 'Family_size'
+        }, inplace=True)
+        
+        # NULL KONTROLÜ: Gender ve Marital Status
+        df['Gender'] = df['Gender'].fillna('Unknown')
+        df['Marital_Status'] = df['Marital_Status'].fillna('Single')
+        
+        # Diğer boşluklar için None
+        df = df.where(pd.notnull(df), None)
+
+        cols = ['user_id', 'name', 'email', 'password', 'Age', 'Gender', 
+                'Marital_Status', 'Occupation', 'Monthly_Income', 
+                'Educational_Qualifications', 'Family_size']
+        
+        data = df[cols].values.tolist()
+        query = """
+        INSERT IGNORE INTO User 
+        (user_id, name, email, password, Age, Gender, Marital_Status, Occupation, Monthly_Income, Educational_Qualifications, Family_size) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        insert_data_in_batches(cursor, conn, query, data, "User")
+    except Exception as e:
+        print(f"User hata: {e}")
+
+def import_restaurants(cursor, conn):
+    file_path = get_csv_path('restaurant.csv')
+    try:
+        df = pd.read_csv(file_path, low_memory=False)
+        df.rename(columns={'id': 'r_id', 'menu': 'menu_json'}, inplace=True)
+        df['rating'] = pd.to_numeric(df['rating'], errors='coerce').fillna(0.0)
+        df['rating_count'] = df['rating_count'].astype(str).str.extract(r'(\d+)').fillna(0).astype(int)
+        df = df.where(pd.notnull(df), None)
+
+        cols = ['r_id', 'name', 'city', 'rating', 'rating_count', 'cost', 
+                'cuisine', 'lic_no', 'link', 'address', 'menu_json']
+        
+        data = df[cols].values.tolist()
+        query = """
+        INSERT IGNORE INTO Restaurant 
+        (r_id, name, city, rating, rating_count, cost, cuisine, lic_no, link, address, menu_json) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        insert_data_in_batches(cursor, conn, query, data, "Restaurant")
+    except Exception as e:
+        print(f"Restaurant hata: {e}")
+
+def import_couriers(cursor, conn):
+    # CSV'den gelen gerçek kuryeler (ID 1'den sonrasına eklenecekler çünkü ID 1'i biz aldık)
+    file_path = get_csv_path('couriers.csv')
+    try:
+        df = pd.read_csv(file_path)
+        df.rename(columns={'MaritalStatus': 'Marital_Status'}, inplace=True)
+        df = df.where(pd.notnull(df), None)
+        
+        # c_id AUTO_INCREMENT olduğu için CSV'den okumuyoruz veya
+        # eğer CSV'de c_id yoksa sorun yok.
+        cols = ['r_id', 'name', 'surname', 'email', 'password', 'Age', 'Gender', 
+                'Marital_Status', 'experience', 'rating', 'ratingCount', 'taskCount']
+        
+        data = df[cols].values.tolist()
+        query = """
+        INSERT IGNORE INTO Courier 
+        (r_id, name, surname, email, password, Age, Gender, Marital_Status, experience, rating, ratingCount, taskCount) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        insert_data_in_batches(cursor, conn, query, data, "Courier")
+    except Exception as e:
+        print(f"Courier hata: {e}")
+
+def import_menu_and_build_map(cursor, conn):
+    # Hem Menüyü yükler hem de MENU_MAP'i doldurur
+    print("--- Menu Tablosu Yükleniyor ve Haritalanıyor ---")
+    file_path = get_csv_path('menu.csv')
+    try:
+        df = pd.read_csv(file_path, low_memory=False)
+        df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0.0)
+        df = df.where(pd.notnull(df), None)
+        
+        # DB'ye Yükleme
+        cols = ['menu_id', 'r_id', 'f_id', 'cuisine', 'price']
+        data = df[cols].values.tolist()
+        
+        query = "INSERT IGNORE INTO Menu (menu_id, r_id, f_id, cuisine, price) VALUES (%s, %s, %s, %s, %s)"
+        insert_data_in_batches(cursor, conn, query, data, "Menu")
+        
+        # Haritalama (Orders için)
+        # Her restoran için İLK menü öğesini alacağız
+        # DB'den çekmek daha güvenli çünkü auto_increment m_id'leri orada oluştu
+        print("--- Menü Haritası Oluşturuluyor (SQL'den çekiliyor)... ---")
+        cursor.execute("SELECT r_id, m_id, price FROM Menu")
+        rows = cursor.fetchall()
+        
+        global MENU_MAP
+        count = 0
+        for r_id, m_id, price in rows:
+            # Eğer bu restoran haritada yoksa ekle (Yani restoranın ilk menü itemi varsayılan olur)
+            if r_id not in MENU_MAP:
+                MENU_MAP[r_id] = {'m_id': m_id, 'price': float(price) if price else 0.0}
+                count += 1
+        print(f"--- Menü Haritası Hazır: {count} restoran için menü bulundu ---")
+        
+    except Exception as e:
+        print(f"Menu hata: {e}")
+
+def import_orders_with_logic(cursor, conn):
+    print("--- Orders Tablosu İşleniyor (Mapping Logic) ---")
+    file_path = get_csv_path('orders.csv')
+    try:
+        df = pd.read_csv(file_path, low_memory=False)
+        df['order_date'] = pd.to_datetime(df['order_date'], errors='coerce').dt.strftime('%Y-%m-%d %H:%M:%S')
+        
+        processed_data = []
+        skipped_count = 0
+        
+        # Pandas satırlarında dönüyoruz
+        for _, row in df.iterrows():
+            r_id = row['r_id']
+            qty = row['sales_qty'] if pd.notnull(row['sales_qty']) else 1
+            
+            # 1. Bu restoranın menüsü var mı?
+            if r_id in MENU_MAP:
+                menu_item = MENU_MAP[r_id]
+                m_id = menu_item['m_id']
+                price = menu_item['price']
+                
+                # 2. Yeni Tutar Hesapla
+                new_amount = float(qty) * price
+                
+                # 3. Veriyi Hazırla (c_id = 1 SABİT)
+                processed_data.append([
+                    row['user_id'], 
+                    r_id, 
+                    row['order_date'], 
+                    qty, 
+                    new_amount, 
+                    row['currency'],
+                    m_id,  # Bulduğumuz m_id
+                    1      # Legacy Courier ID
+                ])
+            else:
+                # Menüsü olmayan restoranın siparişini atlıyoruz (Çünkü m_id NOT NULL)
+                skipped_count += 1
+
+        print(f"--- İşlenen Sipariş: {len(processed_data)}, Atlanan (Menüsü Yok): {skipped_count} ---")
+        
+        query = """
+        INSERT IGNORE INTO Orders 
+        (user_id, r_id, order_date, sales_qty, sales_amount, currency, m_id, c_id) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """
+        insert_data_in_batches(cursor, conn, query, processed_data, "Orders")
+        
+    except Exception as e:
+        print(f"Orders hata: {e}")
+
+# ---------------------------------------------------------
+# MAIN
+# ---------------------------------------------------------
+def main():
+    conn = create_connection()
+    if conn is None:
+        return
+    
+    cursor = conn.cursor()
+    
+    try:
+        # Hazırlık
+        cursor.execute("SET FOREIGN_KEY_CHECKS=0;")
+        cursor.execute("SET SQL_MODE='NO_AUTO_VALUE_ON_ZERO';")
+        print("--- BAŞLIYOR ---")
+
+        # 1. Önce Bağımsızlar ve Legacy Courier
+        create_legacy_courier(cursor, conn) # ID 1 oluştu
+        import_food(cursor, conn)
+        import_users(cursor, conn)
+        import_restaurants(cursor, conn)
+        import_couriers(cursor, conn) # Diğer kuryeler (ID 2, 3...)
+        
+        # 2. Menüleri Yükle ve Hafızaya Al
+        import_menu_and_build_map(cursor, conn)
+        
+        # 3. Siparişleri Menüye Göre İşle ve Yükle
+        import_orders_with_logic(cursor, conn)
+        
+        cursor.execute("SET FOREIGN_KEY_CHECKS=1;")
+        print("\n--- BİTTİ: Tüm veriler mantıksal bağlarla yüklendi! ---")
+        
+    except Exception as e:
+        print(f"Beklenmedik hata: {e}")
+    finally:
+        cursor.close()
+        conn.close()
+
+if __name__ == "__main__":
+    main()
