@@ -163,7 +163,6 @@ def update_user_page(user_id):
 @user.route('update/<int:user_id>',  methods=['POST'])
 def update_user(user_id):
         user_id_stored = session.get('user_id') # the user id stored in the session
-        user_name = session.get('user_name')
         user_type = session.get('user_type')
 
         if(user_id is not None and user_id == user_id_stored and user_type == "user"):
@@ -219,4 +218,26 @@ def update_user(user_id):
             return redirect(url_for("user.update_user_page", user_id = user_id))
         else: 
             return redirect(url_for("home_page.home_page"))
-    
+@user.route('delete/<int:user_id>',  methods=['POST'])
+def delete(user_id):
+    user_id_stored = session.get('user_id')
+    user_type = session.get('user_type')
+    if(user_id is not None and user_id == user_id_stored and user_type == "user"):
+            db_config = current_app.config['DB_CONFIG']
+            db = db_helper.get_db_connection()
+            if not db:
+                return "Database connection failed", 500
+            cursor = db.cursor(dictionary=True)
+            try:
+                  cursor.execute("DELETE FROM User WHERE user_id=%s", (user_id,))
+                  db.commit()
+            except Exception as e:
+                 print(f"Error: {e}")
+                 db.rollback()
+                 return f"Delete failed: {e}", 500
+            finally:
+                 cursor.close()
+            return redirect(url_for("user.user_logout"))
+    else :
+         return redirect(url_for("user.user_logout"), user_id = user_id)
+     
