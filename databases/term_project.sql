@@ -166,3 +166,4 @@ CREATE TABLE Task (
     FOREIGN KEY (m_id) REFERENCES Menu(m_id) ON DELETE SET NULL,
     UNIQUE KEY unique_order (o_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
