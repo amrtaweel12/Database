@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import mysql.connector
 from flask import Blueprint, request, jsonify
 from helpers.db_helper import get_db_connection
@@ -95,3 +97,58 @@ def get_order(order_id):
     finally:
         mycursor.close()
         db.close()
+
+@order.route("/search", methods=["GET"])
+def search_order():
+    r_id = request.args.get("r_id", type=int)
+    IsDelivered = request.args.get("IsDelivered", type=bool)
+    min_order_date = request.args.get("min_order_date", type=datetime)
+    max_order_date = request.args.get("max_order_date", type=datetime)
+    min_sales_qty = request.args.get("min_sales_qty", type=float)
+    max_sales_qty = request.args.get("max_sales_qty", type=float)
+
+    order_by = request.args.get("order_by")      # order_date | sales_qty | IsDelivered
+    order = request.args.get("order", "asc").lower()
+    limit = request.args.get("limit", default=50, type=int)
+    offset = request.args.get("offset", default=0, type=int)
+
+    order_map = {"order_date":"order_date", "sales_qty":"sales_qty", "IsDelivered":"IsDelivered"}
+    order_col = order_map.get(order_by or "", "o_id")
+    order_dir = "DESC" if order == "desc" else "ASC"
+
+    try:
+        db = get_db_connection()
+        if not db:
+            return jsonify({"error": "Database connection failed"}), 500
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 500
+    cur = db.cursor(dictionary=True)
+    try:
+        sql = ["""
+            SELECT o_id, user_id, r_id, order_date, sales_qty, sales_amount,
+                   currency, m_id, c_id, IsDelivered, menu_rate, courier_rate
+            FROM orders
+            WHERE 1=1
+        """]
+        params = []
+        if r_id is not None:
+            sql.append("AND r_id = %s"); params.append(r_id)
+        if IsDelivered is not None:
+            sql.append("AND IsDelivered = %s"); params.append(IsDelivered)
+        if min_order_date is not None:
+            sql.append("AND order_date >= %s"); params.append(min_order_date)
+        if max_order_date is not None:
+            sql.append("AND order_date <= %s"); params.append(max_order_date)
+        if min_sales_qty is not None:
+            sql.append("AND sales_qty >= %s"); params.append(min_sales_qty)
+        if max_sales_qty is not None:
+            sql.append("AND sales_qty <= %s"); params.append(max_sales_qty)
+        sql.append(f"ORDER BY {order_col} {order_dir}")
+        sql.append("LIMIT %s OFFSET %s"); params.extend([limit, offset])
+
+        cur.execute(" ".join(sql), tuple(params))
+        return jsonify(cur.fetchall())
+    except mysql.connector.Error as err:
+        return jsonify({"error": f"Database error: {err}"}), 500
+    finally:
+        cur.close(); db.close()
