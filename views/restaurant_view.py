@@ -247,16 +247,20 @@ def restaurant_submit_signup():
 def restaurant_detail(r_id):
     """Restaurant detail page"""
     # DEMO MODE: Always admin
-    is_manager = True
-    # is_manager = (
-    #     session.get('user_type') == 'restaurant' and 
-    #     str(session.get('user_id')) == str(r_id)
-    # )
+    user_type = session.get('user_type')
+    user_id = session.get('user_id')
+
+    is_manager = (
+        user_type == 'restaurant' and 
+        str(user_id) == str(r_id)
+    )
+    is_customer = (user_type == 'user')
     
     return render_template(
         'restaurant_detail.html', 
         r_id=r_id, 
-        is_manager=is_manager
+        is_manager=is_manager,
+        is_customer=is_customer
     )
 
 
@@ -315,6 +319,33 @@ def list_restaurants():
     except Exception as e:
         print(f"Error fetching restaurants: {e}")
         return jsonify({"error": "Failed to fetch restaurants"}), 500
+    finally:
+        cursor.close()
+        db.close()
+
+@restaurant.route('/api/<int:r_id>/opportunities', methods=['GET'])
+def get_opportunities(r_id):
+    db = db_helper.get_db_connection()
+    cursor = db.cursor(dictionary=True)
+    try:
+        # Find top 5 items in global food catalog NOT in this restaurant's menu
+        # Sorted by how many OTHER restaurants have them (popularity)
+        sql = """
+            SELECT f.f_id, f.item, f.veg_or_non_veg, COUNT(m.m_id) as popularity
+            FROM Food f
+            LEFT JOIN Menu m ON f.f_id = m.f_id
+            WHERE f.f_id NOT IN (
+                SELECT f_id FROM Menu WHERE r_id = %s
+            )
+            GROUP BY f.f_id
+            ORDER BY popularity DESC
+            LIMIT 5
+        """
+        cursor.execute(sql, (r_id,))
+        items = cursor.fetchall()
+        return jsonify(items)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
     finally:
         cursor.close()
         db.close()

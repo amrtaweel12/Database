@@ -1,6 +1,6 @@
 
 """
-This view establishes a global food catalog (Getir-like architecture) to allow 
+This view establishes a global food catalog to allow 
 product reuse across restaurants and enable global search functionality.
 """
 import mysql.connector
