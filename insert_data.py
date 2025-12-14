@@ -18,7 +18,7 @@ BATCH_SIZE = 2000
 db_config = {
     'host': 'localhost',
     'user': 'root',
-    'password': os.getenv("DB_PASSWORD"), # <-- ŞİFRENİ YAZ
+    'password': '227maram', # <-- ŞİFRENİ YAZ
     'database': 'term_project',
     'ssl_disabled': True,
     'allow_local_infile': True
@@ -119,14 +119,13 @@ def import_users(cursor, conn):
         df = df.where(pd.notnull(df), None)
 
         cols = ['user_id', 'name', 'email', 'password', 'Age', 'Gender', 
-                'Marital_Status', 'Occupation', 'Monthly_Income', 
-                'Educational_Qualifications', 'Family_size']
+                'Marital_Status', 'Occupation', 'Monthly_Income']
         
         data = df[cols].values.tolist()
         query = """
         INSERT IGNORE INTO User 
-        (user_id, name, email, password, Age, Gender, Marital_Status, Occupation, Monthly_Income, Educational_Qualifications, Family_size) 
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        (user_id, name, email, password, Age, Gender, Marital_Status, Occupation, Monthly_Income) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         insert_data_in_batches(cursor, conn, query, data, "User")
     except Exception as e:

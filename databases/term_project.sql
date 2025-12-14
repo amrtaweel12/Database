@@ -5,16 +5,14 @@ USE term_project;
 -- 1. User Table (UPDATED: AUTO_INCREMENT)
 CREATE TABLE User (
     user_id INT PRIMARY KEY AUTO_INCREMENT, -- CSV ID'leri aynen kalır, yeniler otomatik artar
-    name VARCHAR(100),
-    email VARCHAR(100),
-    password VARCHAR(255),
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) unique NOT NULL,
+    password VARCHAR(255) NOT NULL,
     Age INT,
     Gender VARCHAR(20) NOT NULL DEFAULT 'Unknown',
     Marital_Status VARCHAR(50) NOT NULL DEFAULT 'Single',
     Occupation VARCHAR(100),
     Monthly_Income VARCHAR(50),
-    Educational_Qualifications VARCHAR(100),
-    Family_size INT,
     city VARCHAR(50) DEFAULT 'Istanbul',
     address TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
