@@ -223,10 +223,10 @@
             <label for="sortSelect" class="form-label mb-1">Sort by</label>
             <select id="sortSelect" name="sort" class="form-select form-select-sm" onchange="loadOrders()">
               <option value="">Default</option>
-              <option value="order_date|asc" {% if sort=='date_asc' %}selected{% endif %}>Oldest</option>
-              <option value="order_date|desc" {% if sort=='date_desc' %}selected{% endif %}>Newest</option>
-              <option value="sales_qty|desc" {% if sort=='qty_desc' %}selected{% endif %}>Highest Quantities</option>
-              <option value="sales_qty|asc" {% if sort=='qty_asc' %}selected{% endif %}>Lowest Quantities</option>
+              <option value="o.order_date|asc" {% if sort=='date_asc' %}selected{% endif %}>Oldest</option>
+              <option value="o.order_date|desc" {% if sort=='date_desc' %}selected{% endif %}>Newest</option>
+              <option value="o.sales_qty|desc" {% if sort=='qty_desc' %}selected{% endif %}>Highest Quantities</option>
+              <option value="o.sales_qty|asc" {% if sort=='qty_asc' %}selected{% endif %}>Lowest Quantities</option>
             </select>
           </div>
 
@@ -263,7 +263,7 @@
       const sort = document.getElementById("sortSelect").value;
       const delivered = document.getElementById("IsDelivered").value;
 
-      let order_by = "order_date";
+      let order_by = "o.order_date";
       let order = "asc";
 
       if (sort.includes("|")) {
@@ -293,6 +293,21 @@
         }
 
         data.forEach(order => {
+          const date = new Date(order.order_date);
+
+          const formattedDate =
+            date.toLocaleDateString("en-GB", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric"
+            }) +
+            " " +
+            date.toLocaleTimeString("en-GB", {
+              hour: "2-digit",
+              minute: "2-digit",
+              hour12: false
+            });
+
           const imgSrc = order.IsDelivered == 1
               ? "https://cdn-icons-png.flaticon.com/512/190/190411.png"   // delivered
               : "https://cdn-icons-png.flaticon.com/512/6711/6711656.png"; // not delivered
@@ -301,10 +316,18 @@
                       <div class="card h-100 shadow-sm border-0 hover-shadow transition-all" style="width: 90%;">
                         <img src="${imgSrc}" class="card-img-top" alt="status" style="width: 100px; margin: 30px auto;">
                         <div class="card-body">
-                          <h5 class="card-title">${order.order_date}</h5>
-                          <p class="card-text small text-muted">
-                            ${order.sales_amount} - ${order.currency}
-                          </p>
+                          <h5 class="card-title">${order.food_name}</h5>
+                            <div class="d-flex justify-content-between">
+                              <span class="text-muted small">
+                                Qty: <strong>${order.sales_qty}</strong>
+                              </span>
+                              <span class="fw-semibold text-dark">
+                                ${order.sales_amount} ${order.currency}
+                              </span>
+                            </div>
+                            <p class="card-text small text-muted mb-0">
+                              <i class="bi bi-clock me-1"></i>${formattedDate}
+                            </p>
                         </div>
                         <div class="card-footer bg-transparent border-0">
                           <button class="view-menu-btn" onclick="event.stopPropagation(); window.location.href='/restaurant/${order.r_id}/${order.o_id}'">View Order</button>

@@ -1,5 +1,3 @@
-from datetime import datetime
-
 import mysql.connector
 from flask import Blueprint, request, jsonify
 from helpers.db_helper import get_db_connection
@@ -110,20 +108,20 @@ def search_order():
     elif raw_delivered == "1":
         IsDelivered = 1
 
-    order_by = request.args.get("order_by", default="order_date")
+    order_by = request.args.get("order_by", default="o.order_date")
     order = request.args.get("order", default="asc")
 
-    valid_cols = {"order_date", "sales_qty", "IsDelivered"}
+    valid_cols = {"o.order_date", "o.sales_qty", "o.IsDelivered"}
     if order_by not in valid_cols:
-        order_by = "order_date"
+        order_by = "o.order_date"
 
     order_map = {
-        "order_date": "order_date",
-        "sales_qty": "sales_qty",
-        "IsDelivered": "IsDelivered"
+        "order_date": "o.order_date",
+        "sales_qty": "o.sales_qty",
+        "IsDelivered": "o.IsDelivered"
     }
 
-    order_col = order_map.get(order_by, "o_id")
+    order_col = order_map.get(order_by, "o.o_id")
     order_dir = "DESC" if order == "desc" else "ASC"
 
     limit = request.args.get("limit", default=50, type=int)
@@ -140,19 +138,21 @@ def search_order():
 
     try:
         sql = ["""
-            SELECT o_id, user_id, r_id, order_date, sales_qty, sales_amount,
-                   currency, m_id, c_id, IsDelivered, menu_rate, courier_rate
-            FROM orders
+            SELECT o.o_id, o.r_id, o.order_date, o.sales_qty, o.sales_amount,
+                   o.currency, o.m_id, o.IsDelivered, f.item AS food_name
+            FROM orders o
+            INNER JOIN menu m ON o.m_id = m.m_id
+            INNER JOIN food f ON f.f_id = m.f_id 
             WHERE 1=1
         """]
         params = []
 
         if r_id is not None:
-            sql.append("AND r_id = %s")
+            sql.append("AND o.r_id = %s")
             params.append(r_id)
 
         if IsDelivered is not None:
-            sql.append("AND IsDelivered = %s")
+            sql.append("AND o.IsDelivered = %s")
             params.append(IsDelivered)
 
         sql.append(f"ORDER BY {order_col} {order_dir}")
