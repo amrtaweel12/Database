@@ -170,6 +170,6 @@ CREATE TABLE Cart (
     quantity INT,
     PRIMARY KEY (user_id, m_id),
     FOREIGN KEY (user_id) REFERENCES User(user_id) ON DELETE CASCADE,
-    FOREIGN KEY (m_id) REFERENCES Orders(m_id) ON DELETE CASCADE,
+    FOREIGN KEY (m_id) REFERENCES Menu(m_id) ON DELETE CASCADE
 )
 
