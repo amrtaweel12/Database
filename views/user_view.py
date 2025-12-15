@@ -240,34 +240,35 @@ def delete(user_id):
             return redirect(url_for("user.user_logout"))
     else :
          return redirect(url_for("user.user_logout"), user_id = user_id)
-@user.route('profile/user_id=<int:user_id>/cart')
-def user_cart(user_id):
+@user.route('profile/user_id=<int:user_id>/history')
+def user_order_history(user_id):
     user_id_stored = session.get('user_id') # the user id stored in the session
     user_name = session.get('user_name')
     user_type = session.get('user_type')
 
     if(user_id is not None and user_id == user_id_stored and user_type == "user"):
-        return render_template('cart.html')
         db_config = current_app.config['DB_CONFIG']
         db = db_helper.get_db_connection()
         if not db:
             return "Database connection failed", 500
         cursor = db.cursor(dictionary=True)
-    
         try:
-            cursor.execute("SELECT * FROM User WHERE user_id = %s", (user_id,))
-            user_data = cursor.fetchone()
-            if user_data:
-                # Login successful
-                return render_template("user_info.html", user = user_data)
-            else:
-                return "This user do not exist", 401
+            cursor.execute("""
+            SELECT O.*, R.name,C.name, C.surname,M.cuisine
+            FROM Orders O
+            JOIN Restaurant R ON R.r_id = O.r_id
+            JOIN Courier C ON C.c_id = O.c_id
+            JOIN Menu M ON M.m_id = O.m_id
+            WHERE O.user_id = %s ORDER BY O.order_date DESC
+            """, (user_id,))
+            user_order_history = cursor.fetchall()
+        
         except Exception as e:
             return f"An error occurred: {e}", 500
         finally:
             cursor.close()
             db.close()
-        
+        return render_template("order_history.html", orders=user_order_history)
          # to do  update cart count
     else :
         return redirect(url_for("home_page.home_page"))
