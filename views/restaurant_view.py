@@ -297,6 +297,49 @@ def restaurant_order_details(r_id, o_id):
         is_manager=is_manager
     )
 
+@restaurant.route('/<int:r_id>/menu/<int:m_id>')
+def make_order(r_id, m_id):
+    user_type = session.get('user_type')
+    user_id = session.get('user_id')
+
+    is_customer = (user_type == 'user')
+
+    db = db_helper.get_db_connection()
+    cursor = db.cursor(dictionary=True)
+
+    try:
+        cursor.execute("""
+            SELECT 
+                m.price,
+                f.item AS food_name,
+                f.veg_or_non_veg AS veg,
+                m.cuisine
+            FROM Menu m
+            JOIN Food f ON m.f_id = f.f_id
+            WHERE m.m_id = %s AND m.r_id = %s
+        """, (m_id, r_id))
+
+        menu = cursor.fetchone()
+        if not menu:
+            return "Menu item not found", 404
+
+    finally:
+        cursor.close()
+        db.close()
+
+    return render_template(
+        'make_order.html',
+        m_id=m_id,
+        r_id=r_id,
+        user_id=user_id,
+        is_customer=is_customer,
+        price=menu['price'],
+        food_name=menu['food_name'],
+        veg=menu['veg'],
+        cuisine=menu['cuisine']
+    )
+
+
 @restaurant.route('/api/restaurants', methods=['GET'])
 def list_restaurants():
     db = db_helper.get_db_connection()

@@ -286,8 +286,8 @@
           } else if (isCustomer) {
             actions = `
             <div class="card-footer bg-transparent border-0 pt-0 pb-3">
-                <button class="btn btn-sm btn-primary w-100" onclick="addToCart(${m.m_id}, '${m.food_name || ''}', ${m.price})">
-                    <i class="bi bi-cart-plus me-1"></i>Add to Cart
+                <button class="btn btn-sm btn-primary w-100" onclick="makeOrder(${rId} ,${m.m_id})">
+                    <i class="bi bi-cart-plus me-1"></i>Order
                 </button>
             </div>`;
           }
@@ -340,10 +340,8 @@
       if (res.ok) loadMenus();
     }
 
-    async function addToCart(mId, foodName, price) {
-      // TODO: Implement actual cart adding logic
-      // The user mentioned they will make the table, so we just provide the button hook here.
-      alert(`Added ${foodName} to cart!`);
+    async function makeOrder(rId, mId) {
+      window.location.href = `/restaurant/${rId}/menu/${mId}`
     }
 
     async function loadOpportunities() {
