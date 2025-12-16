@@ -172,17 +172,18 @@ def search_order():
 @order.route("/create", methods=["POST"])
 def make_an_order():
     data = request.get_json() or {}
+    print(data)
 
-    m_id = data.get("m_id", type=int)
-    user_id = data.get("user_id", type=int)
+    m_id = int(data.get("m_id"))
+    user_id = int(data.get("user_id"))
 
     # --------------------------------------------
     c_id = 5    # Furkan's code
     # --------------------------------------------
 
-    sales_qty = data.get("qty", type=int)
-    price = data.get("price", type=float)
-    r_id = data.get("r_id", type=int)
+    sales_qty = int(data.get("qty"))
+    price = float(data.get("price"))
+    r_id = int(data.get("r_id"))
     currency = "INR" # turn back here
     IsDelivered = 0
 
