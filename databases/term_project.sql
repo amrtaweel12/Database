@@ -78,6 +78,7 @@ CREATE TABLE Courier (
     email VARCHAR(100),
     password VARCHAR(255),
     Age INT,
+    TotalDeliveries INT DEFAULT 0 CHECK (TotalDeliveries >= 0),
     Gender VARCHAR(20),
     Marital_Status VARCHAR(50),
     experience INT DEFAULT 0,

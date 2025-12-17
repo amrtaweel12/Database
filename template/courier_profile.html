@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Courier Profile - GetHere</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <style>
+        :root {
+            --courier-blue: #3498DB;
+            --courier-dark-blue: #2980B9;
+            --accent-light: #E3F2FD;
+            --premium-gold: #FFC107;
+            --success-green: #27AE60;
+            --dark-gray: #2C3E50;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, var(--accent-light) 0%, #F0F8FF 50%, var(--accent-light) 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            right: -10%;
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, rgba(52, 152, 219, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            bottom: -30%;
+            left: -10%;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(41, 128, 185, 0.1) 0%, transparent 70%);
+            border-radius: 50%;
+            z-index: 0;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* PROFILE LAYOUT */
+        .profile-wrapper {
+            padding: 3rem 0;
+            min-height: 100vh;
+        }
+
+        .profile-card {
+            background: #ffffff;
+            border-radius: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            max-width: 1100px;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+
+        .profile-left {
+            background: linear-gradient(135deg, var(--courier-blue), var(--courier-dark-blue));
+            color: #ffffff;
+            min-height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 3rem 2rem;
+        }
+
+        .profile-avatar {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1rem;
+            font-size: 3rem;
+            border: 3px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .profile-left h5 {
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+            font-size: 1.4rem;
+        }
+
+        .profile-left .email-text {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            width: 100%;
+            margin-top: 1.5rem;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 15px;
+            padding: 15px 10px;
+            text-align: center;
+        }
+
+        .stat-card .stat-value {
+            font-size: 1.5rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        .stat-card .stat-label {
+            font-size: 0.75rem;
+            opacity: 0.8;
+            margin-top: 3px;
+        }
+
+        .stat-card .stat-value .star-icon {
+            color: var(--premium-gold);
+        }
+
+        /* Employment Badge */
+        .employment-status {
+            margin-top: 1.5rem;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .employment-status.employed {
+            background: rgba(39, 174, 96, 0.2);
+            color: #A7F3D0;
+        }
+
+        .employment-status.unemployed {
+            background: rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .back-link {
+            color: #ffffff;
+            font-size: 0.9rem;
+            margin-top: 2rem;
+            text-decoration: none;
+            opacity: 0.9;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .back-link:hover {
+            opacity: 1;
+            color: #ffffff;
+        }
+
+        /* Form side */
+        .form-section {
+            padding: 3rem;
+        }
+
+        .form-header {
+            margin-bottom: 2rem;
+        }
+
+        .form-header h3 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--courier-blue), var(--courier-dark-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .form-header p {
+            color: #6c757d;
+            font-size: 0.95rem;
+        }
+
+        .form-label {
+            font-weight: 600;
+            color: var(--dark-gray);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .form-control {
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        .form-control:focus {
+            border-color: var(--courier-blue);
+            box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.15);
+        }
+
+        .form-control:disabled, .form-control[readonly] {
+            background-color: #f8f9fa;
+            color: #6c757d;
+        }
+
+        .radio-section {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 12px;
+            margin-bottom: 1rem;
+        }
+
+        .radio-section h6 {
+            color: var(--dark-gray);
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+        }
+
+        .form-check-input:checked {
+            background-color: var(--courier-blue);
+            border-color: var(--courier-blue);
+        }
+
+        /* Info Box */
+        .info-box {
+            background: linear-gradient(135deg, #E3F2FD 0%, #BBDEFB 100%);
+            border-left: 4px solid var(--courier-blue);
+            padding: 15px 20px;
+            border-radius: 0 12px 12px 0;
+            margin-bottom: 1.5rem;
+        }
+
+        .info-box h6 {
+            color: var(--courier-dark-blue);
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .info-box p {
+            color: #555;
+            margin: 0;
+            font-size: 0.9rem;
+        }
+
+        /* Buttons */
+        .btn-save {
+            background: linear-gradient(135deg, var(--courier-blue), var(--courier-dark-blue));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 0.75rem 2.2rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .btn-save:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(52, 152, 219, 0.4);
+            color: white;
+        }
+
+        .btn-secondary-custom {
+            background: #f8f9fa;
+            color: var(--dark-gray);
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 0.75rem 2rem;
+            font-weight: 600;
+        }
+
+        .btn-secondary-custom:hover {
+            background: #e9ecef;
+        }
+
+        /* Readonly highlight */
+        .readonly-field {
+            position: relative;
+        }
+
+        .readonly-badge {
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            font-size: 0.7rem;
+            background: #e9ecef;
+            padding: 2px 8px;
+            border-radius: 10px;
+            color: #6c757d;
+        }
+
+        @media (max-width: 768px) {
+            .form-section {
+                padding: 2rem 1.5rem;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="profile-wrapper">
+    <div class="container">
+        <div class="profile-card">
+            <div class="row g-0">
+                
+                <!-- LEFT: Avatar + Stats -->
+                <div class="col-md-4">
+                    <div class="profile-left">
+                        <div class="profile-avatar">
+                            <i class="bi bi-person-fill"></i>
+                        </div>
+                        <h5>{{ courier.name }} {{ courier.surname }}</h5>
+                        <span class="email-text">{{ courier.email }}</span>
+                        
+                        <!-- Stats Grid -->
+                        <div class="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-value">
+                                    {{ courier.rating or 0 }}
+                                    <i class="bi bi-star-fill star-icon"></i>
+                                </div>
+                                <div class="stat-label">Rating ({{ courier.ratingCount or 0 }})</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">{{ courier.experience or 0 }}</div>
+                                <div class="stat-label">Years Exp.</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">{{ courier.taskCount or 0 }}</div>
+                                <div class="stat-label">Deliveries</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-value">${{ "%.0f"|format(courier.expected_payment_min or 0) }}</div>
+                                <div class="stat-label">Min. Pay</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Employment Status -->
+                        {% if restaurant_name %}
+                        <div class="employment-status employed">
+                            <i class="bi bi-building-check me-1"></i>
+                            Working at {{ restaurant_name }}
+                        </div>
+                        {% else %}
+                        <div class="employment-status unemployed">
+                            <i class="bi bi-briefcase me-1"></i>
+                            Currently Unemployed
+                        </div>
+                        {% endif %}
+                        
+                        <a href="{{ url_for('courier.courier_dashboard') }}" class="back-link">
+                            <i class="bi bi-arrow-left-circle"></i> Back to Dashboard
+                        </a>
+                    </div>
+                </div>
+
+                <!-- RIGHT: Profile Form -->
+                <div class="col-md-8">
+                    <div class="form-section">
+                        <div class="form-header">
+                            <h3>My Profile</h3>
+                            <p>Update your account information and job preferences</p>
+                        </div>
+                        
+                        <!-- Info Box about eligibility -->
+                        <div class="info-box">
+                            <h6><i class="bi bi-info-circle me-1"></i> Job Eligibility Info</h6>
+                            <p>Your <strong>Rating</strong> and <strong>Experience</strong> determine which jobs you can apply for. Complete more deliveries to improve your rating!</p>
+                        </div>
+
+                        <form action="{{ url_for('courier.update_profile') }}" method="POST">
+                            
+                            <!-- Name Fields -->
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label" for="first_name">First Name</label>
+                                    <input type="text" id="first_name" name="first_name"
+                                           class="form-control"
+                                           placeholder="e.g., Furkan" 
+                                           value="{{ courier.name }}" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="last_name">Last Name</label>
+                                    <input type="text" id="last_name" name="last_name"
+                                           class="form-control"
+                                           placeholder="e.g., Yalçın"
+                                           value="{{ courier.surname or '' }}" required>
+                                </div>
+                            </div>
+
+                            <!-- Email & Password -->
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label" for="email">Email</label>
+                                    <input type="email" id="email" name="email"
+                                           class="form-control"
+                                           placeholder="e.g., courier@email.com" 
+                                           value="{{ courier.email }}" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="password">New Password</label>
+                                    <input type="password" id="password" name="password"
+                                           class="form-control"
+                                           placeholder="Leave empty to keep current">
+                                </div>
+                            </div>
+
+                            <!-- Age & Experience -->
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label" for="age">Age</label>
+                                    <input type="number" id="age" name="age"
+                                           class="form-control"
+                                           placeholder="e.g., 25" 
+                                           value="{{ courier.Age or '' }}"
+                                           min="18" max="100">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label" for="experience">
+                                        Experience (Years)
+                                        <span class="text-primary" data-bs-toggle="tooltip" title="Affects job eligibility">
+                                            <i class="bi bi-question-circle"></i>
+                                        </span>
+                                    </label>
+                                    <input type="number" id="experience" name="experience"
+                                           class="form-control"
+                                           placeholder="e.g., 2" 
+                                           value="{{ courier.experience or 0 }}"
+                                           min="0" max="50">
+                                </div>
+                            </div>
+
+                            <!-- Expected Payment -->
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label" for="expected_payment_min">
+                                        Expected Minimum Payment ($)
+                                    </label>
+                                    <input type="number" id="expected_payment_min" name="expected_payment_min"
+                                           class="form-control"
+                                           placeholder="e.g., 200" 
+                                           value="{{ courier.expected_payment_min|int or 100 }}"
+                                           min="50" step="10">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Rating (Read-only)</label>
+                                    <div class="readonly-field">
+                                        <input type="text" class="form-control" 
+                                               value="{{ courier.rating or 0 }} ⭐ ({{ courier.ratingCount or 0 }} reviews)" 
+                                               disabled>
+                                        <span class="readonly-badge">Auto</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Gender -->
+                            <div class="radio-section">
+                                <h6>Gender</h6>
+                                <div class="d-flex flex-wrap gap-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="gender"
+                                               id="female" value="Female" 
+                                               {% if courier.Gender == 'Female' %}checked{% endif %}>
+                                        <label class="form-check-label" for="female">Female</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="gender"
+                                               id="male" value="Male" 
+                                               {% if courier.Gender == 'Male' %}checked{% endif %}>
+                                        <label class="form-check-label" for="male">Male</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="gender"
+                                               id="other" value="Prefer not to say" 
+                                               {% if courier.Gender == 'Prefer not to say' or not courier.Gender %}checked{% endif %}>
+                                        <label class="form-check-label" for="other">Prefer not to say</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Marital Status -->
+                            <div class="radio-section">
+                                <h6>Marital Status</h6>
+                                <div class="d-flex flex-wrap gap-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="marital_status"
+                                               id="married" value="Married" 
+                                               {% if courier.Marital_Status == 'Married' %}checked{% endif %}>
+                                        <label class="form-check-label" for="married">Married</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="marital_status"
+                                               id="single" value="Single" 
+                                               {% if courier.Marital_Status == 'Single' %}checked{% endif %}>
+                                        <label class="form-check-label" for="single">Single</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="marital_status"
+                                               id="marital_other" value="Prefer not to say" 
+                                               {% if courier.Marital_Status == 'Prefer not to say' or not courier.Marital_Status %}checked{% endif %}>
+                                        <label class="form-check-label" for="marital_other">Prefer not to say</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Account Info (Read-only) -->
+                            <div class="radio-section" style="background: #e8f4fd;">
+                                <h6><i class="bi bi-shield-check me-1"></i> Account Statistics</h6>
+                                <div class="row mt-3">
+                                    <div class="col-md-4 text-center">
+                                        <div class="fw-bold fs-5">{{ courier.taskCount or 0 }}</div>
+                                        <small class="text-muted">Total Deliveries</small>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <div class="fw-bold fs-5">{{ courier.rating or 0 }} ⭐</div>
+                                        <small class="text-muted">Current Rating</small>
+                                    </div>
+                                    <div class="col-md-4 text-center">
+                                        <div class="fw-bold fs-5">{{ courier.created_at.strftime('%b %Y') if courier.created_at else 'N/A' }}</div>
+                                        <small class="text-muted">Member Since</small>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Buttons -->
+                            <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mt-4">
+                                <button type="submit" class="btn btn-save">
+                                    <i class="bi bi-save me-1"></i> Save Changes
+                                </button>
+                                <a href="{{ url_for('courier.courier_dashboard') }}" class="btn btn-secondary-custom">
+                                    <i class="bi bi-x-circle me-1"></i> Cancel
+                                </a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Initialize tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'))
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl)
+    });
+</script>
+</body>
+</html>
