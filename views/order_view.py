@@ -1,6 +1,11 @@
 import mysql.connector
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, session
 from helpers.db_helper import get_db_connection
+
+# 1. IMPORTS NEEDED
+# You must import these to use the logic you defined in the other files
+from views.courier_view import find_available_courier
+from views.task_view import create_task
 
 order = Blueprint('order', __name__)
 
@@ -169,49 +174,68 @@ def search_order():
         cur.close()
         db.close()
 
+order = Blueprint('order', __name__)
+
 @order.route("/create", methods=["POST"])
 def make_an_order():
+    user_id = session.get('user_id')
+    user_type = session.get('user_type')
+
+    # Security Check
+    if not user_id or user_type != 'user':
+        return jsonify({"error": "Unauthorized: Please log in as a customer."}), 401
+
     data = request.get_json() or {}
-    print(data)
-
-    m_id = int(data.get("m_id"))
-    user_id = int(data.get("user_id"))
-
-    # --------------------------------------------
-    c_id = 5    # Furkan's code
-    # --------------------------------------------
-
-    sales_qty = int(data.get("qty"))
-    price = float(data.get("price"))
-    r_id = int(data.get("r_id"))
-    currency = "INR" # turn back here
-    IsDelivered = 0
-
-    sales_amount = sales_qty * price
-    
 
     try:
+        m_id = data.get("m_id")
+        r_id = data.get("r_id")
+        qty = int(data.get("qty", 1))
+        price = float(data.get("price", 0))
+
+        if not m_id or not r_id:
+            return jsonify({"error": "Missing info"}), 400
+
+        # --- START TRANSACTION ---
         db = get_db_connection()
-        if not db:
-            return jsonify({"error": "Database connection failed"}), 500
-    except RuntimeError as e:
-        return jsonify({"error": str(e)}), 500
-    
-    cur = db.cursor(dictionary=True)
-
-    try:
-        cur.execute ("""
-                    INSERT INTO orders(user_id, r_id, m_id, c_id, sales_amount, sales_qty, currency, IsDelivered)
-                    VALUES(%s, %s, %s, %s, %s, %s, %s, %s) 
-                    """,
-                    (user_id, r_id, m_id, c_id, sales_amount, sales_qty, currency, IsDelivered),)
+        if not db: return jsonify({"error": "DB Connection Fail"}), 500
         
-        db.commit()
-        new_id = cur.lastrowid
-        return jsonify({"message": "Order created", "o_id": new_id, "m_id": m_id}), 201
+        cursor = db.cursor(dictionary=True)
+
+        # 2. USE THE IMPORTED HELPER (Pass the cursor!)
+        c_id = find_available_courier(cursor, r_id)
+        
+        if not c_id:
+            return jsonify({"error": "No courier available"}), 400
+
+        # 3. CREATE ORDER
+        cursor.execute("""
+            INSERT INTO orders 
+            (user_id, r_id, m_id, c_id, sales_amount, sales_qty, currency, IsDelivered)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """, (user_id, r_id, m_id, c_id, (qty * price), qty, "INR", 0))
+        
+        o_id = cursor.lastrowid
+
+        # 4. USE THE IMPORTED HELPER (Pass the cursor!)
+        t_id = create_task(cursor, o_id, c_id, user_id, m_id)
+
+        db.commit() # Success!
+        
+        return jsonify({"message": "Success", "o_id": o_id}), 201
+
     except mysql.connector.Error as err:
         db.rollback()
-        return jsonify({"error": f"Database error: {err}"}), 500
+        print(f"DB Error: {err}")
+        if err.errno == 1452:
+            return jsonify({"error": "Data integrity error (User/Menu not found)"}), 400
+        return jsonify({"error": str(err)}), 500
+        
+    except Exception as e:
+        if 'db' in locals() and db: db.rollback()
+        print(f"Logic Error: {e}")
+        return jsonify({"error": str(e)}), 500
+        
     finally:
-        cur.close(); db.close()
-    
+        if 'cursor' in locals() and cursor: cursor.close()
+        if 'db' in locals() and db: db.close()

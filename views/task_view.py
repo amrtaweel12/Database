@@ -1,24 +1,28 @@
-from flask import Blueprint, render_template, request, redirect, url_for, session, current_app, jsonify, flash
-import uuid
-from helpers import db_helper
+# views/task_view.py
+from flask import Blueprint
+from helpers.db_helper import get_db_connection
 
-def find_available_courier(m_id):
+task = Blueprint('task', __name__)
 
-    db = db_helper.get_db_connection()
-    cursor = db.cursor(dictionary=True, buffered=True)
-        
-    try:
-        cursor.execute("""
-            SELECT c_id
-            FROM Courier 
-            WHERE m_id = %s
-        """, (m_id,))
-        c_id = cursor.fetchone()
-        return c_id
+# ... existing routes ...
+
+def create_task(cursor, o_id, c_id, user_id, m_id):
+    """
+    Creates a delivery task.
+    Uses the SHARED cursor to remain in the same transaction as the Order.
+    """
+    # 1. Get User Address
+    cursor.execute("SELECT address FROM User WHERE user_id = %s", (user_id,))
+    user_row = cursor.fetchone()
     
-    except Exception as e:
-        print(f"Dashboard error: {e}")
-        return f"Error: {e}", 500
-    finally:
-        cursor.close()
-        db.close()
+    if not user_row:
+        raise ValueError(f"User {user_id} not found, cannot create task.")
+
+    # 2. Insert Task
+    cursor.execute("""
+        INSERT INTO Task 
+        (o_id, c_id, user_id, m_id, user_address, status)
+        VALUES (%s, %s, %s, %s, %s, %s)
+    """, (o_id, c_id, user_id, m_id, user_row["address"], 0))
+    
+    return cursor.lastrowid

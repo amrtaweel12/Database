@@ -240,6 +240,7 @@ def delete(user_id):
             return redirect(url_for("user.user_logout"))
     else :
          return redirect(url_for("user.user_logout"), user_id = user_id)
+         
 @user.route('profile/user_id=<int:user_id>/history')
 def user_order_history(user_id):
     user_id_stored = session.get('user_id') # the user id stored in the session

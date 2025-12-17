@@ -1127,8 +1127,13 @@ def get_courier(courier_id):
 
 @courier.route("/", methods=["POST"])
 def create_courier_api():
+
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "You must be logged in to place an order"}), 401
+
+    data = request.get_json() or {}
     """Creates a new courier via JSON (API style)."""
-    data = request.get_json()
     if not data:
         return jsonify({"error": "No input data provided"}), 400
         
@@ -1188,3 +1193,16 @@ def create_courier_api():
         "message": "Courier created successfully",
         "c_id": new_courier_id
     }), 201
+
+
+def find_available_courier(cursor, r_id):
+    """
+    Finds a courier linked to the restaurant.
+    Accepts an existing DB cursor to ensure transaction safety.
+    """
+    # Logic: Find a courier assigned to this restaurant (r_id)
+    # You might want to check if they are 'active' in a real app, 
+    # but for now, we just pick one.
+    cursor.execute("SELECT c_id FROM Courier WHERE r_id = %s LIMIT 1", (r_id,))
+    row = cursor.fetchone()
+    return row["c_id"] if row else None

@@ -105,7 +105,7 @@ CREATE TABLE Orders (
     c_id INT NOT NULL,
     IsDelivered BOOLEAN DEFAULT FALSE,
     menu_rate DECIMAL(1,1) DEFAULT NULL CHECK (menu_rate >= 0.0 AND menu_rate <= 5.0),
-    courier_rate DECIMAL(1,1) DEFAULT NULL CHECK (courier_rate >= 0.0 AND courier_rate <= 5.0)
+    courier_rate DECIMAL(1,1) DEFAULT NULL CHECK (courier_rate >= 0.0 AND courier_rate <= 5.0),
 
     FOREIGN KEY (user_id) REFERENCES User(user_id) ON DELETE CASCADE,
     FOREIGN KEY (r_id) REFERENCES Restaurant(r_id) ON DELETE CASCADE,
