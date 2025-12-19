@@ -286,13 +286,20 @@ def restaurant_detail(r_id):
 
     is_manager = (user_type == 'restaurant' and str(user_id) == str(r_id))
     is_customer = (user_type == 'user')
+
+    current_user = {
+        "is_authenticated": user_id is not None,
+        "username": session.get('manager_name') or session.get('restaurant_name') or session.get('user_name') or 'User',
+        "id": user_id
+    }
     
     return render_template(
         'restaurant_detail.html', 
         r_id=r_id, 
         restaurant=restaurant_data,
         is_manager=is_manager,
-        is_customer=is_customer
+        is_customer=is_customer,
+        current_user=current_user
     )
 
 @restaurant.route('/<int:r_id>')
@@ -384,12 +391,11 @@ def restaurant_info(r_id):
 @restaurant.route('/<int:r_id>/orders')
 def restaurant_orders(r_id):
     """Restaurant orders page"""
-    # DEMO MODE: Always admin
-    is_manager = True
-    # is_manager = (
-    #     session.get('user_type') == 'restaurant' and
-    #     str(session.get('user_id')) == str(r_id)
-    # )
+    # DEMO MODE REMOVED: Real security check enabled
+    is_manager = (
+        session.get('user_type') == 'restaurant' and
+        str(session.get('user_id')) == str(r_id)
+    )
 
     return render_template(
         'orders.html',
@@ -400,12 +406,11 @@ def restaurant_orders(r_id):
 @restaurant.route('/<int:r_id>/<int:o_id>')
 def restaurant_order_details(r_id, o_id):
     """Restaurant orders page"""
-    # DEMO MODE: Always admin
-    is_manager = True
-    # is_manager = (
-    #     session.get('user_type') == 'restaurant' and
-    #     str(session.get('user_id')) == str(r_id)
-    # )
+    # DEMO MODE REMOVED: Real security check enabled
+    is_manager = (
+        session.get('user_type') == 'restaurant' and
+        str(session.get('user_id')) == str(r_id)
+    )
 
     return render_template(
         'order_detail.html',
@@ -471,20 +476,26 @@ def list_restaurants():
         min_rating = request.args.get('min_rating')
 
         # Start building the query
-        sql_query = "SELECT r_id, name, city, rating, cuisine, address, photo_url FROM Restaurant"
+        sql_query = """
+            SELECT DISTINCT r.r_id, r.name, r.city, r.rating, r.cuisine, r.address, r.photo_url 
+            FROM Restaurant r
+            LEFT JOIN Menu m ON r.r_id = m.r_id
+            LEFT JOIN Food f ON m.f_id = f.f_id
+        """
         conditions = []
         params = []
 
-        # Add search condition
+        # Add search condition (Name OR Food Item OR Cuisine)
         if search_query:
-            conditions.append("name LIKE %s")
-            params.append(f"%{search_query}%")
+            conditions.append("(r.name LIKE %s OR f.item LIKE %s OR r.cuisine LIKE %s OR m.cuisine LIKE %s)")
+            wildcard = f"%{search_query}%"
+            params.extend([wildcard, wildcard, wildcard, wildcard])
         
         # Add rating condition
         if min_rating and min_rating != 'any':
             try:
                 rating_val = float(min_rating)
-                conditions.append("rating >= %s")
+                conditions.append("r.rating >= %s")
                 params.append(rating_val)
             except ValueError:
                 pass # Ignore invalid rating values
@@ -495,10 +506,10 @@ def list_restaurants():
 
         # Add sorting
         if sort_by == 'rating':
-            sql_query += " ORDER BY rating DESC"
+            sql_query += " ORDER BY r.rating DESC"
         elif sort_by == 'popular':
             # Assuming popularity is based on rating for now
-            sql_query += " ORDER BY rating DESC"
+            sql_query += " ORDER BY r.rating DESC"
         # The 'delivery' sort option is not implemented as there's no data for it yet.
 
         # Add a limit to avoid sending too much data

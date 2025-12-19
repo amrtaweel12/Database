@@ -141,10 +141,19 @@
             </a>
 
             {% if current_user is defined and current_user.is_authenticated %}
-            <a href="#" class="btn btn-outline-primary">
+            <a href="
+              {% if is_manager %}
+                {{ url_for('restaurant.restaurant_dashboard') }}
+              {% elif is_customer %}
+                 {{ url_for('user.user_home', user_id=current_user.id) }} 
+              {% else %}
+                 # 
+              {% endif %}
+            " class="btn btn-outline-primary">
               <i class="bi bi-person-circle"></i> {{ current_user.username or 'Profile' }}
             </a>
-            <a href="#" class="btn btn-danger">
+            <a href="{{ url_for('restaurant.restaurant_logout') if is_manager else url_for('user.user_logout')  }}"
+              class="btn btn-danger">
               <i class="bi bi-box-arrow-right"></i> Logout
             </a>
             {% else %}
@@ -251,7 +260,12 @@
         <div class="modal-body">
           <div class="mb-3">
             <label>Search Global Food Catalog</label>
-            <input type="text" id="foodSearch" class="form-control" placeholder="Type generic name e.g. Burger...">
+            <div class="input-group">
+              <input type="text" id="foodSearch" class="form-control" placeholder="Type generic name e.g. Burger...">
+              <button class="btn btn-outline-secondary" type="button" id="btnSearchFood">
+                <i class="bi bi-search"></i>
+              </button>
+            </div>
           </div>
           <div id="searchResults" class="list-group mb-3" style="max-height: 200px; overflow-y:auto;"></div>
 
@@ -278,7 +292,7 @@
 
     async function loadMenus() {
       try {
-        const res = await fetch(`/menus/search?r_id=${rId}&order_by=price&order=asc&limit=100`);
+        const res = await fetch(`/menus/by-restaurant/${rId}`);
         const data = await res.json();
         const wrap = document.getElementById('menu-cards');
         wrap.innerHTML = '';
@@ -404,19 +418,22 @@
 
     // Modal Search Logic
     const searchInput = document.getElementById('foodSearch');
-    let searchTimeout;
+    const searchBtn = document.getElementById('btnSearchFood');
 
-    searchInput.addEventListener('input', (e) => {
-      const val = e.target.value.trim();
-      clearTimeout(searchTimeout);
-
+    async function doSearch() {
+      const val = searchInput.value.trim();
       if (val.length < 2) {
         document.getElementById('searchResults').innerHTML = '';
         return;
       }
 
-      searchTimeout = setTimeout(async () => {
-        const res = await fetch(`/food/?q=${val}`);
+      // Show loading state
+      document.getElementById('searchResults').innerHTML = '<div class="text-center p-2"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+
+      try {
+        const res = await fetch(`/foods/?q=${val}`);
+        if (!res.ok) throw new Error("Search failed");
+
         const data = await res.json();
         const resDiv = document.getElementById('searchResults');
         resDiv.innerHTML = '';
@@ -432,15 +449,40 @@
           });
         }
 
-        // 2. ALWAYS Show option to create new (unless exact match found maybe, but flexible is better)
+        // 2. ALWAYS Show option to create new
         const createOption = document.createElement('a');
         createOption.className = 'list-group-item list-group-item-action list-group-item-light text-primary fw-bold';
         createOption.innerHTML = `<i class="bi bi-plus-circle"></i> Create New: "${val}"`;
-        createOption.onclick = () => selectFood("", val, "Non-Veg"); // Default new to Non-Veg
+        createOption.onclick = () => selectFood("", val, "Non-Veg");
         resDiv.appendChild(createOption);
 
-      }, 300);
+      } catch (e) {
+        console.error(e);
+        document.getElementById('searchResults').innerHTML = '<div class="text-danger p-2">Search failed. Try again.</div>';
+      }
+    }
+
+    // Search on Enter key
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault(); // prevent form submit if inside a form (though it's not)
+        doSearch();
+      }
     });
+
+    // Search on Button Click
+    searchBtn.addEventListener('click', doSearch);
+
+    // Also keep the input listener but maybe removing debounce for manual trigger preference?
+    // User asked for button/enter, so let's keep it manual or debounce. 
+    // Let's keep debounce as a fallback but make it longer to avoid "flickering" if user types fast?
+    // User specifically complained about "no button no enter", so let's primarily rely on those, 
+    // OR keep the auto-search but make it robust. 
+    // I'll keep the input listener removed to respect "Enter" workflows more strictly if that's what they want,
+    // or just leave it out to be "manual" as requested.
+    // Actually, auto-search is usually better UX, but if it's confusing them, let's stick to explicit search for now 
+    // OR just support both. I'll NOT add the 'input' listener back, so it only searches on Enter/Click. 
+    // This solves "enter smth and no button no enter working" by making "button and enter" the ONLY way, which is predictable.
 
     function selectFood(fid, name, veg) {
       document.getElementById('selFid').value = fid; // Empty if new

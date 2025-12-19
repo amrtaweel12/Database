@@ -19,7 +19,7 @@ def create_app():
     app.register_blueprint(main, url_prefix='/')
     app.register_blueprint(user, url_prefix='/users')
     app.register_blueprint(courier, url_prefix='/couriers')
-    app
+
     app.register_blueprint(restaurant, url_prefix='/restaurant')
     app.register_blueprint(menu, url_prefix='/menus')
     app.register_blueprint(order, url_prefix='/orders')

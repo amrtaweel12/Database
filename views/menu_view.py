@@ -100,25 +100,7 @@ def create_menu_item():
     finally:
         cur.close(); db.close()
 
-@menu.route("/", methods=["GET"])
-def get_all_menu_items():
-    try:
-        db = _get_db()
-    except RuntimeError as e:
-        return jsonify({"error": str(e)}), 500
-    cur = db.cursor(dictionary=True)
-    try:
-        cur.execute("""
-            SELECT m.m_id, m.menu_id, m.r_id, m.f_id, m.cuisine, m.price, m.created_at,
-                   f.item AS food_name, f.veg_or_non_veg AS veg
-            FROM Menu m
-            LEFT JOIN Food f ON f.f_id = m.f_id
-        """)
-        return jsonify(cur.fetchall())
-    except mysql.connector.Error as err:
-        return jsonify({"error": f"Database error: {err}"}), 500
-    finally:
-        cur.close(); db.close()
+
 
 @menu.route("/<int:m_id>", methods=["GET"])
 def get_menu_item(m_id):
