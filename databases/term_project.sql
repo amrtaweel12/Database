@@ -75,21 +75,35 @@ CREATE TABLE Courier (
     r_id INT,
     name VARCHAR(50),
     surname VARCHAR(50),
-    email VARCHAR(100),
-    password VARCHAR(255),
-    Age INT,
-    TotalDeliveries INT DEFAULT 0 CHECK (TotalDeliveries >= 0),
+    email VARCHAR(100) NOT NULL UNIQUE
+        CHECK (email LIKE '_%@_____%'),
+    password VARCHAR(255) NOT NULL,
+    Age INT NOT NULL
+        CHECK (Age >= 18),
+    TotalDeliveries INT NOT NULL DEFAULT 0
+        CHECK (TotalDeliveries >= 0),
     Gender VARCHAR(20),
     Marital_Status VARCHAR(50),
-    experience INT DEFAULT 0,
-    rating DECIMAL(3,1) DEFAULT 0.0,
-    ratingCount INT DEFAULT 0,
-    taskCount INT DEFAULT 0,
-    expected_payment_min DECIMAL(10,2) DEFAULT 100.00,
-    expected_payment_max DECIMAL(10,2) DEFAULT 500.00,
+    experience INT NOT NULL DEFAULT 0
+        CHECK (experience >= 0),
+    rating DECIMAL(3,1) NOT NULL DEFAULT 0.0
+        CHECK (rating >= 0.0 AND rating <= 5.0),
+    ratingCount INT NOT NULL DEFAULT 0
+        CHECK (ratingCount >= 0),
+    taskCount INT NOT NULL DEFAULT 0
+        CHECK (taskCount >= 0),
+    expected_payment_min DECIMAL(10,2) NOT NULL DEFAULT 100.00
+        CHECK (expected_payment_min >= 0),
+    expected_payment_max DECIMAL(10,2) NOT NULL DEFAULT 500.00
+        CHECK (expected_payment_max >= expected_payment_min),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (r_id) REFERENCES Restaurant(r_id) ON DELETE SET NULL
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+    FOREIGN KEY (r_id)
+        REFERENCES Restaurant(r_id)
+        ON DELETE SET NULL
+) ENGINE=InnoDB
+  DEFAULT CHARSET=utf8mb4;
+
 
 -- 6. Orders Table
 CREATE TABLE Orders (
@@ -103,9 +117,8 @@ CREATE TABLE Orders (
     m_id INT,
     c_id INT NOT NULL,
     IsDelivered BOOLEAN DEFAULT FALSE,
-    menu_rate DECIMAL(1,1) DEFAULT NULL CHECK (menu_rate >= 0.0 AND menu_rate <= 5.0),
-    courier_rate DECIMAL(1,1) DEFAULT NULL CHECK (courier_rate >= 0.0 AND courier_rate <= 5.0),
-
+    menu_rate    DECIMAL(2,1) CHECK (menu_rate BETWEEN 0.0 AND 5.0),
+    courier_rate DECIMAL(2,1) CHECK (courier_rate BETWEEN 0.0 AND 5.0),
     FOREIGN KEY (user_id) REFERENCES User(user_id) ON DELETE CASCADE,
     FOREIGN KEY (r_id) REFERENCES Restaurant(r_id) ON DELETE CASCADE,
     FOREIGN KEY (c_id) REFERENCES Courier(c_id) ON DELETE RESTRICT,
