@@ -69,7 +69,7 @@ ALTER TABLE `Menu`
   ADD KEY `idx_menu_price` (`price`),
   ADD KEY `idx_menu_cuisine` (`cuisine`);
 
--- 5. Courier Table (FIXED)
+-- 5. Courier Table 
 CREATE TABLE Courier (
     c_id INT PRIMARY KEY AUTO_INCREMENT,
     r_id INT,
@@ -99,9 +99,8 @@ CREATE TABLE Courier (
 
     FOREIGN KEY (r_id)
         REFERENCES Restaurant(r_id)
-        ON DELETE SET NULL,
+        ON DELETE SET NULL
 
-    CONSTRAINT chk_payment_range CHECK (expected_payment_max >= expected_payment_min)
 ) ENGINE=InnoDB
   DEFAULT CHARSET=utf8mb4;
 
