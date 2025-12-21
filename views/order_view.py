@@ -304,80 +304,6 @@ def update_order(o_id):
         cur.close()
         db.close()
 
-# @order.route("/rate/<int:o_id>", methods=["PUT"])
-# def update_ratings(o_id):
-#     """
-#     Rate an order - updates both courier and restaurant ratings.
-    
-#     Uses trust-weighted formula:
-#     new_rating = (current_rating * (ratingCount + 3) + given_rating) / (ratingCount + 4)
-#     """
-#     data = request.get_json() or {}
-
-#     try:
-#         menu_rate = data.get("menu_rate")
-#         courier_rate = data.get("courier_rate")
-
-#         if menu_rate is None or courier_rate is None:
-#             return jsonify({"error": "Missing ratings"}), 400
-
-#         menu_rate = float(menu_rate)
-#         courier_rate = float(courier_rate)
-
-#         if not (1 <= menu_rate <= 5 and 1 <= courier_rate <= 5):
-#             return jsonify({"error": "Ratings must be between 1 and 5"}), 400
-
-#         db = get_db_connection()
-#         if not db:
-#             return jsonify({"error": "DB Connection Fail"}), 500
-
-#         cur = db.cursor(dictionary=True)
-
-#         # Get order info
-#         cur.execute("SELECT courier_rate, menu_rate, c_id, r_id FROM Orders WHERE o_id = %s", (o_id,))
-#         order_data = cur.fetchone()
-        
-#         if not order_data:
-#             return jsonify({"error": "Order not found"}), 404
-        
-#         if order_data['courier_rate'] is not None or order_data['menu_rate'] is not None:
-#             return jsonify({"error": "This order has already been rated"}), 400
-
-#         c_id = order_data['c_id']
-#         r_id = order_data['r_id']
-
-#         # Get current ratings
-#         cur.execute("SELECT rating, ratingCount FROM Courier WHERE c_id = %s", (c_id,))
-#         courier_data = cur.fetchone()
-
-#         cur.execute("SELECT rating, rating_count FROM Restaurant WHERE r_id = %s", (r_id,))
-#         restaurant_data = cur.fetchone()
-
-#         # Calculate new ratings: (current * (count + 3) + new) / (count + 4)
-#         current_courier_rating = float(courier_data['rating'] or 3.0)
-#         courier_count = int(courier_data['ratingCount'] or 0)
-#         new_courier_rating = round((current_courier_rating * (courier_count + 3) + courier_rate) / (courier_count + 4), 1)
-
-#         current_restaurant_rating = float(restaurant_data['rating'] or 3.0)
-#         restaurant_count = int(restaurant_data['rating_count'] or 0)
-#         new_restaurant_rating = round((current_restaurant_rating * (restaurant_count + 3) + menu_rate) / (restaurant_count + 4), 1)
-
-#         # Update all tables
-#         cur.execute("UPDATE Courier SET rating = %s, ratingCount = ratingCount + 1 WHERE c_id = %s", (new_courier_rating, c_id))
-#         cur.execute("UPDATE Restaurant SET rating = %s, rating_count = rating_count + 1 WHERE r_id = %s", (new_restaurant_rating, r_id))
-#         cur.execute("UPDATE Orders SET menu_rate = %s, courier_rate = %s WHERE o_id = %s", (menu_rate, courier_rate, o_id))
-
-#         db.commit()
-#         return jsonify({"message": "Success", "o_id": o_id})
-
-#     except Exception as err:
-#         if 'db' in locals() and db: db.rollback()
-#         return jsonify({"error": str(err)}), 500
-
-#     finally:
-#         if 'cur' in locals() and cur: cur.close()
-#         if 'db' in locals() and db: db.close()
-
 @order.route("/rate/<int:o_id>", methods=["PUT"])
 def update_ratings(o_id):
     data = request.get_json() or {}
@@ -474,6 +400,99 @@ def delete_order(o_id):
     
     finally:
         cur.close()
+        db.close()
+
+@order.route('/statistics')
+def general_statistics():
+    db = get_db_connection()
+    cursor = db.cursor(dictionary=True)
+    
+    try:
+        # 1. Key Performance Indicators (KPIs)
+        cursor.execute("""
+            SELECT
+                COUNT(o_id) AS total_orders,
+                SUM(sales_amount) AS gross_merchandise_value,
+                COUNT(DISTINCT user_id) AS total_users_number
+            FROM Orders
+        """)
+        kpi_data = cursor.fetchone()
+
+        # 2. Top sold cuisines
+        cursor.execute("""
+            SELECT
+                cuisine,
+                total_sold
+            FROM (
+                SELECT
+                    m.cuisine,
+                    SUM(o.sales_qty) AS total_sold
+                FROM Orders o
+                JOIN Menu m ON o.m_id = m.m_id
+                WHERE o.IsDelivered = TRUE
+                GROUP BY m.cuisine
+            ) AS cuisine_sales
+            ORDER BY total_sold DESC
+            LIMIT 10;
+        """)
+        top_cuisines = cursor.fetchall()
+        
+        # 3. Top sold restaurants
+        cursor.execute("""
+            SELECT
+                r_id,
+                name,
+                total_orders,
+                total_qty,
+                total_revenue
+            FROM (
+                SELECT
+                    r.r_id,
+                    r.name,
+                    COUNT(o.o_id) AS total_orders,
+                    SUM(o.sales_qty) AS total_qty,
+                    SUM(o.sales_amount) AS total_revenue
+                FROM Orders o
+                JOIN Restaurant r ON o.r_id = r.r_id
+                WHERE o.IsDelivered = TRUE
+                GROUP BY r.r_id, r.name
+            ) AS restaurant_sales
+            ORDER BY total_qty DESC
+            LIMIT 10;        
+        """)
+        top_restaurants = cursor.fetchall()
+
+        # 4. Top Cuisine per City
+        cursor.execute("""
+            SELECT city, cuisine, total_sold
+                FROM (
+                    SELECT
+                        r.city,
+                        m.cuisine,
+                        SUM(o.sales_qty) AS total_sold,
+                        RANK() OVER (PARTITION BY r.city ORDER BY SUM(o.sales_qty) DESC) AS rnk
+                    FROM Orders o
+                    JOIN Restaurant r ON o.r_id = r.r_id
+                    JOIN Menu m ON o.m_id = m.m_id
+                    WHERE o.IsDelivered = TRUE
+                    GROUP BY r.city, m.cuisine
+                ) ranked
+                WHERE rnk = 1;
+        """)
+        top_cuisine_per_city = cursor.fetchall()
+
+        return jsonify({
+            "kpis": kpi_data,
+            "top_cuisines": top_cuisines,
+            "top_restaurants": top_restaurants,
+            "top_cuisine_per_city": top_cuisine_per_city
+        }), 200
+
+    except Exception as e:
+        print(f"Restaurant Info Page Error: {e}")
+        return "An error occurred while fetching restaurant data.", 500
+    finally:
+        cursor.close()
         db.close()
 
 

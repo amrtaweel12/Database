@@ -256,8 +256,8 @@ def import_orders_with_logic(cursor, conn):
         
         query = """
         INSERT IGNORE INTO Orders 
-        (user_id, r_id, order_date, sales_qty, sales_amount, currency, m_id, c_id) 
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        (user_id, r_id, order_date, sales_qty, sales_amount, currency, m_id, c_id, IsDelivered) 
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 1)
         """
         insert_data_in_batches(cursor, conn, query, processed_data, "Orders")
         
