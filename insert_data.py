@@ -8,9 +8,6 @@ import time
 import dotenv
 dotenv.load_dotenv()
 
-# ---------------------------------------------------------
-# AYARLAR
-# ---------------------------------------------------------
 CSV_FOLDER_PATH = 'raw_data'
 BATCH_SIZE = 2000
 
@@ -23,12 +20,8 @@ db_config = {
     'allow_local_infile': True
 }
 
-# Hafızada tutulacak Menü Haritası {r_id: (m_id, price)}
 MENU_MAP = {}
 
-# ---------------------------------------------------------
-# BAĞLANTI VE YARDIMCI FONKSİYONLAR
-# ---------------------------------------------------------
 def create_connection():
     try:
         conn = mysql.connector.connect(**db_config)
@@ -139,6 +132,9 @@ def import_restaurants(cursor, conn):
         df['rating_count'] = df['rating_count'].astype(str).str.extract(r'(\d+)').fillna(0).astype(int)
         df = df.where(pd.notnull(df), None)
 
+        if 'cuisine' in df.columns:
+            df['cuisine'] = df['cuisine'].apply(lambda x: x.split(',')[0].strip() if pd.notnull(x) and isinstance(x, str) else x)
+
         cols = ['r_id', 'name', 'city', 'rating', 'rating_count', 'cost',
                 'cuisine', 'lic_no', 'link', 'address', 'menu_json']
 
@@ -163,8 +159,6 @@ def import_couriers(cursor, conn):
         df['experience'] = pd.to_numeric(df['experience'], errors='coerce').fillna(0).astype(int)
         df.replace({np.nan: None}, inplace=True)
         
-        # c_id AUTO_INCREMENT olduğu için CSV'den okumuyoruz veya
-        # eğer CSV'de c_id yoksa sorun yok.
         cols = ['r_id', 'name', 'surname', 'email', 'password', 'Age', 'Gender', 
                 'Marital_Status', 'experience', 'rating', 'ratingCount', 'taskCount']
         
@@ -186,6 +180,9 @@ def import_menu_and_build_map(cursor, conn):
         df = pd.read_csv(file_path, low_memory=False)
         df['price'] = pd.to_numeric(df['price'], errors='coerce').fillna(0.0)
         df = df.where(pd.notnull(df), None)
+
+        if 'cuisine' in df.columns:
+            df['cuisine'] = df['cuisine'].apply(lambda x: x.split(',')[0].strip() if pd.notnull(x) and isinstance(x, str) else x)
         
         # DB'ye Yükleme
         cols = ['menu_id', 'r_id', 'f_id', 'cuisine', 'price']

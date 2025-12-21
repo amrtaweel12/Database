@@ -490,17 +490,6 @@
     // Search on Button Click
     searchBtn.addEventListener('click', doSearch);
 
-    // Also keep the input listener but maybe removing debounce for manual trigger preference?
-    // User asked for button/enter, so let's keep it manual or debounce. 
-    // Let's keep debounce as a fallback but make it longer to avoid "flickering" if user types fast?
-    // User specifically complained about "no button no enter", so let's primarily rely on those, 
-    // OR keep the auto-search but make it robust. 
-    // I'll keep the input listener removed to respect "Enter" workflows more strictly if that's what they want,
-    // or just leave it out to be "manual" as requested.
-    // Actually, auto-search is usually better UX, but if it's confusing them, let's stick to explicit search for now 
-    // OR just support both. I'll NOT add the 'input' listener back, so it only searches on Enter/Click. 
-    // This solves "enter smth and no button no enter working" by making "button and enter" the ONLY way, which is predictable.
-
     function selectFood(fid, name, veg) {
       document.getElementById('selFid').value = fid; // Empty if new
       document.getElementById('selVeg').value = veg;
