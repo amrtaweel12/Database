@@ -534,7 +534,7 @@ def my_restaurant_page():
         # Get restaurant details
         cursor.execute("""
             SELECT r.r_id, r.name, r.city, r.rating, r.rating_count, 
-                   r.cuisine, r.address, r.link, r.cost, r.lic_no
+                   r.cuisine, r.address, r.link, r.cost, r.lic_no, r.photo_url
             FROM Restaurant r
             WHERE r.r_id = %s
         """, (courier_info['r_id'],))
@@ -552,9 +552,15 @@ def my_restaurant_page():
         # RESTAURANT LEADERBOARD (GROUP BY + NESTED SUBQUERY)
         # Shows top 10 couriers for this restaurant
         # Score = total_deliveries * avg_courier_rate
+        # 
+        # IMPORTANT: Only counts deliveries made AFTER the courier
+        # was hired (using Position.created_at as the hire date)
+        # This ensures we show performance under current position only.
+        #
         # Uses:
         #   - GROUP BY: to aggregate deliveries and ratings per courier
         #   - NESTED SUBQUERY: to get the restaurant ID from current courier
+        #   - JOIN with Positions: to filter by hire date
         # =====================================================
         cursor.execute("""
             SELECT 
@@ -566,9 +572,11 @@ def my_restaurant_page():
                 AVG(o.courier_rate) AS avg_delivery_rating,
                 (COUNT(t.t_id) * COALESCE(AVG(o.courier_rate), 0)) AS score
             FROM Courier c
+            INNER JOIN Positions p ON c.c_id = p.c_id AND c.r_id = p.r_id
             INNER JOIN Task t ON c.c_id = t.c_id
             INNER JOIN Orders o ON t.o_id = o.o_id
             WHERE t.status = 1
+              AND t.task_date >= p.created_at
               AND c.r_id = (
                   SELECT r_id 
                   FROM Courier 
@@ -620,8 +628,9 @@ def leave_restaurant():
     """
     Leave current restaurant position.
     This will:
-    1. Set courier's r_id to NULL
-    2. Delete the position from Positions table
+    1. Check if courier has any unfinished tasks (prevent leaving if so)
+    2. Set courier's r_id to NULL
+    3. Delete the position from Positions table
     """
     if 'user_id' not in session or session.get('user_type') != 'courier':
         return jsonify({"error": "Unauthorized"}), 401
@@ -633,7 +642,7 @@ def leave_restaurant():
     try:
         # Get current courier info
         cursor.execute("""
-            SELECT c_id, r_id, name, surname
+            SELECT c_id, r_id, name, surname, taskCount
             FROM Courier 
             WHERE c_id = %s
         """, (courier_id,))
@@ -644,6 +653,20 @@ def leave_restaurant():
         
         if not courier_info['r_id']:
             return jsonify({"error": "You are not currently employed at any restaurant"}), 400
+        
+        # Check for unfinished tasks
+        cursor.execute("""
+            SELECT COUNT(*) as pending_count
+            FROM Task
+            WHERE c_id = %s AND status = 0
+        """, (courier_id,))
+        pending = cursor.fetchone()
+        
+        if pending and pending['pending_count'] > 0:
+            return jsonify({
+                "error": f"You have {pending['pending_count']} unfinished delivery(ies). Please complete all deliveries before leaving.",
+                "pending_tasks": pending['pending_count']
+            }), 400
         
         restaurant_id = courier_info['r_id']
         
