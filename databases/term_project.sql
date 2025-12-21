@@ -2,9 +2,9 @@ DROP DATABASE IF EXISTS term_project;
 CREATE DATABASE term_project;
 USE term_project;
 
--- 1. User Table (UPDATED: AUTO_INCREMENT)
+-- 1. User Table
 CREATE TABLE User (
-    user_id INT PRIMARY KEY AUTO_INCREMENT, -- CSV ID'leri aynen kalır, yeniler otomatik artar
+    user_id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
@@ -19,9 +19,9 @@ CREATE TABLE User (
     INDEX idx_email (email)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 2. Restaurant Table (UPDATED: AUTO_INCREMENT)
+-- 2. Restaurant Table
 CREATE TABLE Restaurant (
-    r_id INT PRIMARY KEY AUTO_INCREMENT, -- CSV ID'leri korunur
+    r_id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100),
     city VARCHAR(50),
     rating DECIMAL(3,1) DEFAULT 0,
@@ -38,7 +38,7 @@ CREATE TABLE Restaurant (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 3. Food Table (ID String olduğu için AUTO_INCREMENT OLAMAZ)
+-- 3. Food Table
 CREATE TABLE Food (
     f_id VARCHAR(50) PRIMARY KEY,
     item VARCHAR(255),
@@ -96,13 +96,8 @@ CREATE TABLE Courier (
         CHECK (expected_payment_min >= 0),
     expected_payment_max DECIMAL(10,2) NOT NULL DEFAULT 500.00,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-
-    FOREIGN KEY (r_id)
-        REFERENCES Restaurant(r_id)
-        ON DELETE SET NULL
-
-) ENGINE=InnoDB
-  DEFAULT CHARSET=utf8mb4;
+    FOREIGN KEY (r_id) REFERENCES Restaurant(r_id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 6. Orders Table
 CREATE TABLE Orders (
@@ -116,7 +111,7 @@ CREATE TABLE Orders (
     m_id INT,
     c_id INT NOT NULL,
     IsDelivered BOOLEAN DEFAULT FALSE,
-    menu_rate    DECIMAL(2,1) CHECK (menu_rate BETWEEN 0.0 AND 5.0),
+    menu_rate DECIMAL(2,1) CHECK (menu_rate BETWEEN 0.0 AND 5.0),
     courier_rate DECIMAL(2,1) CHECK (courier_rate BETWEEN 0.0 AND 5.0),
     FOREIGN KEY (user_id) REFERENCES User(user_id) ON DELETE CASCADE,
     FOREIGN KEY (r_id) REFERENCES Restaurant(r_id) ON DELETE CASCADE,
@@ -124,53 +119,45 @@ CREATE TABLE Orders (
     FOREIGN KEY (m_id) REFERENCES Menu(m_id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- -----------------------------------------------------
--- 7. Restaurant_Manager (CSV'de yok, App için gerekli)
--- -----------------------------------------------------
+-- 7. Restaurant_Manager
 CREATE TABLE Restaurant_Manager (
     rm_id INT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(50) NOT NULL,
     surname VARCHAR(50),
     email VARCHAR(100) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
-    managesId INT, -- Hangi restoranı yönetiyor
+    managesId INT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (managesId) REFERENCES Restaurant(r_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- -----------------------------------------------------
--- 8. Positions (CSV'de yok, App için gerekli)
--- Manager tarafından açılan iş ilanları
--- -----------------------------------------------------
+-- 8. Positions Table (UPDATED: added hired_at)
 CREATE TABLE Positions (
     p_id INT PRIMARY KEY AUTO_INCREMENT,
     r_id INT NOT NULL,
-    c_id INT, -- İşe alınan kurye
+    c_id INT,
     city VARCHAR(50),
-    req_exp INT DEFAULT 0, -- İstenen deneyim
-    req_rating DECIMAL(3,1) DEFAULT 0, -- İstenen minimum rating
+    req_exp INT DEFAULT 0,
+    req_rating DECIMAL(3,1) DEFAULT 0,
     payment DECIMAL(10,2) NOT NULL,
     isOpen BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    hired_at TIMESTAMP NULL DEFAULT NULL,  -- NEW: When courier was hired
     deliveries_made INT DEFAULT 0,
     FOREIGN KEY (c_id) REFERENCES Courier(c_id) ON DELETE SET NULL,
     FOREIGN KEY (r_id) REFERENCES Restaurant(r_id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- -----------------------------------------------------
--- 9. Task (CSV'de yok, App Logic'in kalbi)
--- Aktif teslimat görevi
--- -----------------------------------------------------
+-- 9. Task Table (REMOVED duplicate created_at)
 CREATE TABLE Task (
     t_id INT PRIMARY KEY AUTO_INCREMENT,
-    o_id INT NOT NULL, -- Hangi sipariş
-    c_id INT NOT NULL, -- Hangi kurye
-    user_id INT NOT NULL, -- Kime gidiyor
-    m_id INT, -- Ne taşıyor (Nullable yaptık çünkü eski siparişlerin m_id'si yok)
+    o_id INT NOT NULL,
+    c_id INT NOT NULL,
+    user_id INT NOT NULL,
+    m_id INT,
     task_date DATETIME DEFAULT CURRENT_TIMESTAMP,
-    user_address TEXT, -- Adres kopyası
-    status BOOLEAN DEFAULT FALSE, -- 0: Ongoing, 1: Finished
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    user_address TEXT,
+    status BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (o_id) REFERENCES Orders(o_id) ON DELETE CASCADE,
     FOREIGN KEY (c_id) REFERENCES Courier(c_id) ON DELETE CASCADE,
     FOREIGN KEY (user_id) REFERENCES User(user_id) ON DELETE CASCADE,

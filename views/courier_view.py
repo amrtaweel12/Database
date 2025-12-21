@@ -565,7 +565,7 @@ def my_restaurant_page():
             INNER JOIN Task t ON c.c_id = t.c_id
             INNER JOIN Orders o ON t.o_id = o.o_id
             WHERE t.status = 1
-              AND t.task_date >= p.created_at
+              AND t.task_date >= p.hired_at
               AND c.r_id = (
                   SELECT r_id 
                   FROM Courier 
@@ -1050,10 +1050,9 @@ def api_apply_position(position_id):
         # Update Position: set c_id and close position
         cursor.execute("""
             UPDATE Positions 
-            SET c_id = %s, isOpen = FALSE 
+            SET c_id = %s, isOpen = FALSE, hired_at = CURRENT_TIMESTAMP
             WHERE p_id = %s
         """, (courier_id, position_id))
-        
         # Update Courier: set r_id
         cursor.execute("""
             UPDATE Courier 
