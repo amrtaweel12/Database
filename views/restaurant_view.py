@@ -351,7 +351,7 @@ def restaurant_info(r_id):
         cursor.execute(menu_query, (r_id,))
         menu_data = cursor.fetchone()
 
-        # 4. Bestseller & Top Courier Spotlight (The Complex Query)
+        # 4. Bestseller & Top Courier Spotlight
         spotlight_query = """
             SELECT
                 c.name AS courier_name,
