@@ -458,12 +458,20 @@
           });
         }
 
-        // 2. ALWAYS Show option to create new
-        const createOption = document.createElement('a');
-        createOption.className = 'list-group-item list-group-item-action list-group-item-light text-primary fw-bold';
-        createOption.innerHTML = `<i class="bi bi-plus-circle"></i> Create New: "${val}"`;
-        createOption.onclick = () => selectFood("", val, "Non-Veg");
-        resDiv.appendChild(createOption);
+        // 2. ALWAYS Show options to create new (Veg & Non-Veg)
+        // Option A: Link as Non-Veg
+        const createNonVeg = document.createElement('a');
+        createNonVeg.className = 'list-group-item list-group-item-action list-group-item-light text-primary fw-bold';
+        createNonVeg.innerHTML = `<i class="bi bi-plus-circle"></i> Create New: "${val}" <span class="badge bg-danger">Non-Veg</span>`;
+        createNonVeg.onclick = () => selectFood("", val, "Non-Veg");
+        resDiv.appendChild(createNonVeg);
+
+        // Option B: Link as Veg
+        const createVeg = document.createElement('a');
+        createVeg.className = 'list-group-item list-group-item-action list-group-item-light text-success fw-bold';
+        createVeg.innerHTML = `<i class="bi bi-plus-circle"></i> Create New: "${val}" <span class="badge bg-success">Veg</span>`;
+        createVeg.onclick = () => selectFood("", val, "Veg");
+        resDiv.appendChild(createVeg);
 
       } catch (e) {
         console.error(e);
