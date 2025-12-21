@@ -304,6 +304,80 @@ def update_order(o_id):
         cur.close()
         db.close()
 
+# @order.route("/rate/<int:o_id>", methods=["PUT"])
+# def update_ratings(o_id):
+#     """
+#     Rate an order - updates both courier and restaurant ratings.
+    
+#     Uses trust-weighted formula:
+#     new_rating = (current_rating * (ratingCount + 3) + given_rating) / (ratingCount + 4)
+#     """
+#     data = request.get_json() or {}
+
+#     try:
+#         menu_rate = data.get("menu_rate")
+#         courier_rate = data.get("courier_rate")
+
+#         if menu_rate is None or courier_rate is None:
+#             return jsonify({"error": "Missing ratings"}), 400
+
+#         menu_rate = float(menu_rate)
+#         courier_rate = float(courier_rate)
+
+#         if not (1 <= menu_rate <= 5 and 1 <= courier_rate <= 5):
+#             return jsonify({"error": "Ratings must be between 1 and 5"}), 400
+
+#         db = get_db_connection()
+#         if not db:
+#             return jsonify({"error": "DB Connection Fail"}), 500
+
+#         cur = db.cursor(dictionary=True)
+
+#         # Get order info
+#         cur.execute("SELECT courier_rate, menu_rate, c_id, r_id FROM Orders WHERE o_id = %s", (o_id,))
+#         order_data = cur.fetchone()
+        
+#         if not order_data:
+#             return jsonify({"error": "Order not found"}), 404
+        
+#         if order_data['courier_rate'] is not None or order_data['menu_rate'] is not None:
+#             return jsonify({"error": "This order has already been rated"}), 400
+
+#         c_id = order_data['c_id']
+#         r_id = order_data['r_id']
+
+#         # Get current ratings
+#         cur.execute("SELECT rating, ratingCount FROM Courier WHERE c_id = %s", (c_id,))
+#         courier_data = cur.fetchone()
+
+#         cur.execute("SELECT rating, rating_count FROM Restaurant WHERE r_id = %s", (r_id,))
+#         restaurant_data = cur.fetchone()
+
+#         # Calculate new ratings: (current * (count + 3) + new) / (count + 4)
+#         current_courier_rating = float(courier_data['rating'] or 3.0)
+#         courier_count = int(courier_data['ratingCount'] or 0)
+#         new_courier_rating = round((current_courier_rating * (courier_count + 3) + courier_rate) / (courier_count + 4), 1)
+
+#         current_restaurant_rating = float(restaurant_data['rating'] or 3.0)
+#         restaurant_count = int(restaurant_data['rating_count'] or 0)
+#         new_restaurant_rating = round((current_restaurant_rating * (restaurant_count + 3) + menu_rate) / (restaurant_count + 4), 1)
+
+#         # Update all tables
+#         cur.execute("UPDATE Courier SET rating = %s, ratingCount = ratingCount + 1 WHERE c_id = %s", (new_courier_rating, c_id))
+#         cur.execute("UPDATE Restaurant SET rating = %s, rating_count = rating_count + 1 WHERE r_id = %s", (new_restaurant_rating, r_id))
+#         cur.execute("UPDATE Orders SET menu_rate = %s, courier_rate = %s WHERE o_id = %s", (menu_rate, courier_rate, o_id))
+
+#         db.commit()
+#         return jsonify({"message": "Success", "o_id": o_id})
+
+#     except Exception as err:
+#         if 'db' in locals() and db: db.rollback()
+#         return jsonify({"error": str(err)}), 500
+
+#     finally:
+#         if 'cur' in locals() and cur: cur.close()
+#         if 'db' in locals() and db: db.close()
+
 @order.route("/rate/<int:o_id>", methods=["PUT"])
 def update_ratings(o_id):
     data = request.get_json() or {}
@@ -329,45 +403,43 @@ def update_ratings(o_id):
 
         cur.execute("""
             UPDATE orders o
-            JOIN courier c ON c.c_id = o.c_id
-            JOIN restaurant r ON r.r_id = o.r_id
+            JOIN (
+                SELECT o_id, menu_rate, courier_rate, c_id, r_id
+                FROM orders
+            ) old ON old.o_id = o.o_id
+            JOIN courier c ON c.c_id = old.c_id
+            JOIN restaurant r ON r.r_id = old.r_id
             SET
                 c.rating =
                     CASE
-                        WHEN o.courier_rate IS NULL AND c.ratingCount = 0
-                            THEN %s
-                        WHEN o.courier_rate IS NULL AND c.ratingCount > 0
-                            THEN (COALESCE(c.rating, 0) * c.ratingCount + %s) / (c.ratingCount + 1)
-                        WHEN o.courier_rate IS NOT NULL AND c.ratingCount > 0
-                            THEN (COALESCE(c.rating, 0) * c.ratingCount - o.courier_rate + %s) / c.ratingCount
-                        ELSE c.rating
+                        WHEN old.courier_rate IS NULL
+                            THEN (c.rating * (c.ratingCount + 3) + %s) / (c.ratingCount + 4)
+                        ELSE
+                            (c.rating * (c.ratingCount + 3) - o.courier_rate + %s) / (c.ratingCount + 3)
                     END,
                 c.ratingCount =
                     CASE
-                        WHEN o.courier_rate IS NULL THEN c.ratingCount + 1
+                        WHEN old.courier_rate IS NULL THEN c.ratingCount + 1
                         ELSE c.ratingCount
                     END,
 
                 r.rating =
                     CASE
-                        WHEN o.menu_rate IS NULL AND r.rating_count = 0
-                            THEN %s
-                        WHEN o.menu_rate IS NULL AND r.rating_count > 0
-                            THEN (COALESCE(r.rating, 0) * r.rating_count + %s) / (r.rating_count + 1)
-                        WHEN o.menu_rate IS NOT NULL AND r.rating_count > 0
-                            THEN (COALESCE(r.rating, 0) * r.rating_count - o.menu_rate + %s) / r.rating_count
-                        ELSE r.rating
+                        WHEN old.menu_rate IS NULL
+                            THEN (r.rating * (r.rating_count + 3) + %s) / (r.rating_count + 4)
+                        ELSE
+                            (r.rating * (r.rating_count + 3) - o.menu_rate + %s) / (r.rating_count + 3)
                     END,
                 r.rating_count =
                     CASE
-                        WHEN o.menu_rate IS NULL THEN r.rating_count + 1
+                        WHEN old.menu_rate IS NULL THEN r.rating_count + 1
                         ELSE r.rating_count
                     END,
 
                 o.menu_rate = %s,
                 o.courier_rate = %s
             WHERE o.o_id = %s
-        """, (courier_rate, courier_rate, courier_rate, menu_rate, menu_rate, menu_rate, menu_rate, courier_rate, o_id))
+        """, (courier_rate, courier_rate, menu_rate, menu_rate, menu_rate, courier_rate, o_id))
 
         db.commit()
         return jsonify({"message": "Success", "o_id": o_id})
