@@ -4,6 +4,7 @@ from mysql.connector import Error
 import numpy as np
 import os
 import time
+import bcrypt
 
 import dotenv
 dotenv.load_dotenv()
@@ -147,8 +148,25 @@ def import_restaurants(cursor, conn):
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
         insert_data_in_batches(cursor, conn, query, data, "Restaurant")
+
+        # Now, add managers for these restaurants
+        print("\n--- Restaurant Yöneticileri Ekleniyor ---")
+        manager_data = []
+        password_hash = bcrypt.hashpw("123".encode("utf-8"), bcrypt.gensalt())
+        
+        # Drop rows where r_id is null before iterating
+        for r_id in df['r_id'].dropna():
+            email = f"{int(r_id)}@gmail.com"
+            manager_data.append(('deneme', 'deneme', email, password_hash, int(r_id)))
+
+        manager_query = """
+        INSERT IGNORE INTO Restaurant_Manager (name, surname, email, password, managesId)
+        VALUES (%s, %s, %s, %s, %s)
+        """
+        insert_data_in_batches(cursor, conn, manager_query, manager_data, "Restaurant_Manager")
+
     except Exception as e:
-        print(f"Restaurant hata: {e}")
+        print(f"\nRestaurant & Manager hata: {e}")
 def import_couriers(cursor, conn):
     # CSV'den gelen gerçek kuryeler (ID 1'den sonrasına eklenecekler çünkü ID 1'i biz aldık)
     file_path = get_csv_path('couriers.csv')
